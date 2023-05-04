@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.5.33402.96
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ASiNet.Binary.Lib", "ASiNet.Binary.Lib\ASiNet.Binary.Lib.csproj", "{07AC022C-E637-4F26-B580-27834D398A55}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Test", "Test\Test.csproj", "{D3300EBE-E729-4D09-9DE8-93471798D690}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{07AC022C-E637-4F26-B580-27834D398A55}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{07AC022C-E637-4F26-B580-27834D398A55}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{07AC022C-E637-4F26-B580-27834D398A55}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{07AC022C-E637-4F26-B580-27834D398A55}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D3300EBE-E729-4D09-9DE8-93471798D690}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D3300EBE-E729-4D09-9DE8-93471798D690}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D3300EBE-E729-4D09-9DE8-93471798D690}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D3300EBE-E729-4D09-9DE8-93471798D690}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {1D9DDABA-C31E-4608-AE53-F2DEC0AA1D6A}
+	EndGlobalSection
+EndGlobal
