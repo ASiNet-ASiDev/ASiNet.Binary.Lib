@@ -232,6 +232,24 @@ public ref struct BinaryBuffer
         return true;
     }
 
+    public bool Write(in Enum data)
+    {
+        var etype = data.GetType().GetEnumUnderlyingType().Name;
+        var result = etype switch
+        {
+            nameof(SByte) => Write((sbyte)(object)data),
+            nameof(Byte) => Write((byte)(object)data),
+            nameof(Int16) => Write((short)(object)data),
+            nameof(UInt16) => Write((ushort)(object)data),
+            nameof(Int32) => Write((int)(object)data),
+            nameof(UInt32) => Write((uint)(object)data),
+            nameof(Int64) => Write((long)(object)data),
+            nameof(UInt64) => Write((ulong)(object)data),
+            _ => throw new NotImplementedException($"Enum type is '{etype}' not implimented!"),
+        };
+        return result;
+    }
+
     public bool Write(in ulong data)
     {
         Span<byte> buffer = stackalloc byte[sizeof(ulong)];
@@ -425,6 +443,42 @@ public ref struct BinaryBuffer
         var data = _buffer.Slice(_readPosition, sizeof(double));
         _readPosition += sizeof(double);
         return BitConverter.ToDouble(data);
+    }
+
+    public T ReadEnum<T>() where T : struct, Enum
+    {
+        var etype = typeof(T).GetEnumUnderlyingType().Name;
+        var result = etype switch
+        {
+            nameof(SByte) => Enum.Parse<T>(ReadSByte().ToString()),
+            nameof(Byte) => Enum.Parse<T>(ReadByte().ToString()),
+            nameof(Int16) => Enum.Parse<T>(ReadInt16().ToString()),
+            nameof(UInt16) => Enum.Parse<T>(ReadUInt16().ToString()),
+            nameof(Int32) => Enum.Parse<T>(ReadInt32().ToString()),
+            nameof(UInt32) => Enum.Parse<T>(ReadUInt32().ToString()),
+            nameof(Int64) => Enum.Parse<T>(ReadInt64().ToString()),
+            nameof(UInt64) => Enum.Parse<T>(ReadUInt64().ToString()),
+            _ => throw new NotImplementedException($"Enum type is '{etype}' not implimented!"),
+        };
+        return result;
+    }
+
+    public Enum ReadEnum(Type enumType)
+    {
+        var etype = enumType.GetEnumUnderlyingType().Name;
+        var result = etype switch
+        {
+            nameof(SByte) => Enum.Parse(enumType, ReadSByte().ToString()),
+            nameof(Byte) => Enum.Parse(enumType, ReadByte().ToString()),
+            nameof(Int16) => Enum.Parse(enumType, ReadInt16().ToString()),
+            nameof(UInt16) => Enum.Parse(enumType, ReadUInt16().ToString()),
+            nameof(Int32) => Enum.Parse(enumType, ReadInt32().ToString()),
+            nameof(UInt32) => Enum.Parse(enumType, ReadUInt32().ToString()),
+            nameof(Int64) => Enum.Parse(enumType, ReadInt64().ToString()),
+            nameof(UInt64) => Enum.Parse(enumType, ReadUInt64().ToString()),
+            _ => throw new NotImplementedException($"Enum type is '{etype}' not implimented!"),
+        };
+        return (Enum)result;
     }
 
     public char ReadChar()
