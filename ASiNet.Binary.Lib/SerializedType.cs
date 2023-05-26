@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 
 namespace ASiNet.Binary.Lib;
-public enum SerializedTypes
+public enum SerializedType
 {
     None,
     Boolean,
@@ -24,4 +24,21 @@ public enum SerializedTypes
     Guid,
     Char,
     String,
+
+    BooleanArray,
+    SByteArray,
+    ByteArray,
+    Int16Array,
+    UInt16Array,
+    Int32Array,
+    UInt32Array,
+    Int64Array,
+    UInt64Array,
+    FloatArray,
+    DoubleArray,
+    EnumArray,
+    DateTimeArray,
+    GuidArray,
+    CharArray,
+    StringArray,
 }

@@ -1,9 +1,11 @@
 ﻿using ASiNet.Binary.Lib;
+using ASiNet.Binary.Lib.Expressions.BaseTypes;
 using System.Text;
 
-var buffer = new BinaryBuffer(stackalloc byte[4096]);
+var buffer = new BinaryBuffer(stackalloc byte[4096], stackalloc byte[512]);
 
-Console.WriteLine(BinaryBufferSerializer.Serialize(new Test() { StringTest = "wgbwbwbwbwывпц" }, ref buffer));
+
+Console.WriteLine(BinaryBufferSerializer.Serialize(new Test() { StringTest = "wgbwbwbwbwывпц", TestInt32Array = new[] { 4, 5, 4, 5, 4, 5 ,4, 5 } }, ref buffer));
 
 Console.WriteLine(string.Join(' ', buffer.ToArray()));
 
@@ -31,6 +33,8 @@ class Test
     public DateTime DtTest { get; set; } = DateTime.UtcNow;
     public Guid GuidTest { get; set; } = Guid.NewGuid();
     public TestEnum EnumTest { get; set; } = TestEnum.Val2;
+
+    public int[] TestInt32Array { get; set; } = new[] { 2, 2, 2, 2, 2, 2, 2, 2, 2 };
 }
 
 enum TestEnum
