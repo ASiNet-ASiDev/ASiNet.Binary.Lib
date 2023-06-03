@@ -27,3 +27,8 @@ var a = 50;
 var b = "Hello World!";
 
 binbuf.Write(a)
+binbuf.Write(b, Encoding.UTF8);
+
+var result = binbuf.ToArray();
+
+Concole.WriteLine(string.Join(' ', result));
