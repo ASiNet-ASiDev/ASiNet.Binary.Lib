@@ -71,7 +71,6 @@ Concole.WriteLine(str);
 
 ```cs
 using ASiNet.Binary.Lib;
-using ASiNet.Binary.Lib.Expansons.Types;
 
 var binbuf = new BinaryBuffer(area, buffer, ref r, ref w);
 
@@ -99,9 +98,6 @@ class User
 
 ```cs
 using ASiNet.Binary.Lib;
-using ASiNet.Binary.Lib.Expansons.Types;
-
-
 
 var user = BinaryBufferSerializer.Deserialize<User>(binbuf);
 
