@@ -13,67 +13,49 @@ public ref struct BinaryBuffer
     /// Создаёт буфер из заданого <see cref="Span{T}"/> 
     /// </summary>
     /// <param name="buffer">Буфер в который будут записанны данные.</param>
-    public BinaryBuffer(Span<byte> area, Span<byte> buffer)
+    public BinaryBuffer(Span<byte> area, Span<byte> buffer, ref int writePosition, ref int readPosition)
     {
         _area = area;
         _buffer = buffer;
+        _writePosition = ref writePosition;
+        _readPosition = ref readPosition;
     }
-    /// <summary>
-    /// Создаёт буфер из заданного <see cref="Span{T}"/> и начальной позиции с которой будут записываться данные.
-    /// </summary>
-    /// <param name="buffer">Буфер в который будут записанны данные.</param>
-    /// <param name="writeOffset">Позиция в которую будет установлен <see cref="WritePosition"/> по умолчанию.</param>
-    /// <exception cref="ArgumentOutOfRangeException"/>
-    public BinaryBuffer(Span<byte> buffer, int writeOffset)
-    {
-        if(writeOffset < 0 || writeOffset >= buffer.Length)
-            throw new ArgumentOutOfRangeException(nameof(writeOffset));
-        _defaultWriteStartPos = writeOffset;
-        _area = buffer;
-        _writePosition = writeOffset;
-    }
-    /// <summary>
-    /// Создаёт буфер из заданного <see cref="Span{T}"/> и начальной позиции с которой будут записываться данные, и начальной позицией с которой будут читаться данные.
-    /// </summary>
-    /// <param name="buffer">Буфер в который будут записанны данные.</param>
-    /// <param name="writeOffset">Позиция в которую будет установлен <see cref="WritePosition"/> по умолчанию.</param>
-    /// <param name="readOffset">Позиция в которую будет установлен <see cref="ReadPosition"/> по умолчанию.</param>
-    /// <exception cref="ArgumentOutOfRangeException"/>
-    public BinaryBuffer(Span<byte> buffer, int writeOffset, int readOffset)
-    {
-        if (writeOffset < 0 || writeOffset >= buffer.Length)
-            throw new ArgumentOutOfRangeException(nameof(writeOffset));
-        if (readOffset < 0 || readOffset >= buffer.Length)
-            throw new ArgumentOutOfRangeException(nameof(readOffset));
-        _defaultWriteStartPos = writeOffset;
-        _defaultReadStartPos = readOffset;
-        _area = buffer;
-        _writePosition = writeOffset;
-        _readPosition = readOffset;
-    }
+
     #endregion
 
     /// <summary>
     /// Общий размер буфера.
     /// </summary>
-    public int Length => _area.Length;
-    /// <summary>
-    /// Размер буфера занемаемый данными.
-    /// </summary>
-    public int Size =>  _writePosition - _defaultWriteStartPos;
-    /// <summary>
-    /// Позиция с которой будут прочитаны последующие данные.
-    /// </summary>
-    public int ReadPosition => _readPosition;
+    public readonly int Length => _area.Length;
+
+    public readonly int FreeSpace => _area.Length - _writePosition;
+
+    public int ReadPosition
+    { 
+        get => _readPosition;
+        set
+        {
+            if(value < 0 || value >= _area.Length)
+                throw new IndexOutOfRangeException();
+            _readPosition = value;
+        }
+    }
     /// <summary>
     /// Позиция в которую будут записанные последующие данные.
     /// </summary>
-    public int WritePosition => _writePosition;
+    public int WritePosition
+    { 
+        get => _writePosition;
+        set
+        {
+            if (value < 0 || value >= _area.Length)
+                throw new IndexOutOfRangeException();
+            _writePosition = value;
+        }
+    }
 
-    private int _defaultWriteStartPos = 0;
-    private int _defaultReadStartPos = 0;
-    private int _writePosition = 0;
-    private int _readPosition = 0;
+    private ref int _writePosition;
+    private ref int _readPosition;
 
     private Span<byte> _area;
     private Span<byte> _buffer;
@@ -113,10 +95,10 @@ public ref struct BinaryBuffer
         }
     }
 
-    public bool WriteSpan(in Span<byte> data)
+    public bool WriteSpan(Span<byte> data)
     {
         var offset = _writePosition + data.Length;
-        if (offset > _area.Length)
+        if (offset > FreeSpace)
             return false;
 
         for (int i = 0; i < data.Length; i++)
@@ -125,10 +107,10 @@ public ref struct BinaryBuffer
         return true;
     }
 
-    public bool WriteMemory(in Memory<byte> value)
+    public bool WriteMemory(Memory<byte> value)
     {
         var offset = _writePosition + value.Length;
-        if (offset > _area.Length)
+        if (offset > FreeSpace)
             return false;
         var data = value.Span;
 
@@ -138,10 +120,10 @@ public ref struct BinaryBuffer
         return true;
     }
 
-    public bool WriteSpan(in ReadOnlySpan<byte> data)
+    public bool WriteSpan(ReadOnlySpan<byte> data)
     {
         var offset = _writePosition + data.Length;
-        if (offset > _area.Length)
+        if (offset > FreeSpace)
             return false;
 
         for (int i = 0; i < data.Length; i++)
@@ -150,11 +132,11 @@ public ref struct BinaryBuffer
         return true;
     }
 
-    public bool WriteSpan(in ReadOnlySpan<char> data, Encoding encoding)
+    public bool WriteSpan(ReadOnlySpan<char> data, Encoding encoding)
     {
         var size = encoding.GetByteCount(data);
         var offset = _writePosition + size;
-        if (offset > _area.Length)
+        if (offset > FreeSpace)
             return false;
 
         Span<byte> buffer = stackalloc byte[size];
@@ -170,13 +152,21 @@ public ref struct BinaryBuffer
     /// <summary>
     /// Преобразует <see cref="BinaryBuffer"/> в <see cref="Span{T}"/> обрезая незадействоное пространство используя <see cref="Span{T}.Slice(int, int)"/>.
     /// </summary>
+    /// <param name="trimStart">Если <see cref="true"/>, то обрезает начиная с <see cref="ReadPosition"/></param>
     /// <returns> <see cref="Span{T}"/> с размером <see cref="Size"/></returns>
-    public Span<byte> ToSpan(bool trimStart = false) => trimStart ? _area.Slice(ReadPosition, _writePosition) : _area.Slice(_defaultReadStartPos, _writePosition);
+    public Span<byte> ToSpan(bool trimStart = false) => trimStart ? _area.Slice(_readPosition, _writePosition) : _area.Slice(0, _writePosition);
     /// <summary>
     /// Преобразует <see cref="BinaryBuffer"/> в массив <see cref="byte"/> обрезая незадействоное пространство используя <see cref="Span{T}.Slice(int, int)"/>.
     /// </summary>
+    /// <param name="trimStart">Если <see cref="true"/>, то обрезает начиная с <see cref="ReadPosition"/></param>
     /// <returns> массив <see cref="byte"/> с размером <see cref="Size"/></returns>
-    public byte[] ToArray(bool trimStart = false) => trimStart ? _area.Slice(ReadPosition, _writePosition).ToArray() : _area.Slice(_defaultReadStartPos, _writePosition).ToArray();
+    public byte[] ToArray(bool trimStart = false) => (trimStart ? _area.Slice(_readPosition, _writePosition) : _area.Slice(0, _writePosition)).ToArray();
+    /// <summary>
+    /// Преобразует <see cref="BinaryBuffer"/> в массив <see cref="byte"/> обрезая незадействоное пространство используя <see cref="Span{T}.Slice(int, int)"/>.
+    /// </summary>
+    /// <param name="trimStart">Если <see cref="true"/>, то обрезает начиная с <see cref="ReadPosition"/></param>
+    /// <returns> массив <see cref="byte"/> с размером <see cref="Size"/></returns>
+    public List<byte> ToList(bool trimStart = false) => new((trimStart ? _area.Slice(_readPosition, _writePosition) : _area.Slice(0, _writePosition)).ToArray());
     #endregion
 
     #region stream 
@@ -187,23 +177,19 @@ public ref struct BinaryBuffer
     /// <returns><see cref="true"/> если данные были записанны, иначе <see cref="false"/></returns>
     public bool WriteToStream(Stream stream)
     {
-        if (stream.CanWrite)
+        if (!stream.CanWrite)
             return false;
-        stream.Write(_area.Slice(_defaultWriteStartPos, _writePosition));
+        stream.Write(_area.Slice(0, _writePosition));
         return true;
     }
     #endregion
 
-    public void ResetReadPosition() => _readPosition = 0;
-    public void ResetWritePosition() => _writePosition = 0;
-
-    public void ResetDefaultReadPosition() => _defaultReadStartPos = 0;
-    public void ResetDefaultWritePosition() => _defaultWriteStartPos = 0;
 
     public void Clear()
     {
         _readPosition = 0;
         _writePosition = 0;
+        _buffer.Clear();
         _area.Clear();
     }
 }

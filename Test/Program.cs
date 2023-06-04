@@ -1,11 +1,37 @@
 ﻿using ASiNet.Binary.Lib;
-using ASiNet.Binary.Lib.Expressions.BaseTypes;
-using System.Text;
 
-var buffer = new BinaryBuffer(stackalloc byte[4096], stackalloc byte[512]);
+var w = 0;
+var r = 0;
+var buffer = new BinaryBuffer(stackalloc byte[4096], stackalloc byte[512], ref w, ref r);
 
+var rawData = new Test()
+{ 
+    EnumTest = TestBEnum.Val3,
+    EnumTest1 = TestSBEnum.Val3,
+    EnumTest2 = TestUSHEnum.Val3,
+    EnumTest3 = TestSHEnum.Val3,
+    EnumTest4 = TestINTEnum.Val3,
+    EnumTest5 = TestUINTEnum.Val3,
+    EnumTest6 = TestLONEnum.Val3,
+    EnumTest7 = TestULONEnum.Val3,
+    StringTest = "wgbwbwbwbwывпц", 
+    TestInt32Array = new[] { 4, 5, 4, 5, 4, 5, 4, 5 }, 
+    BooleanTest = true, 
+    ByteTest = 127, 
+    CharTest = 'C', 
+    DoubleTest = 1.1f, 
+    DtTest = DateTime.MaxValue, 
+    FloatTest = 1.2f, GuidTest = Guid.NewGuid(), 
+    IntTest = -3388, 
+    LongTest = -44455,
+    SByteTest = -33, 
+    ShortTest = -55,
+    UIntTest = 5554,
+    ULongTest = 25552,
+    UshortTest = 62433 
+};
 
-Console.WriteLine(BinaryBufferSerializer.Serialize(new Test() { StringTest = "wgbwbwbwbwывпц", TestInt32Array = new[] { 4, 5, 4, 5, 4, 5 ,4, 5 } }, ref buffer));
+Console.WriteLine(BinaryBufferSerializer.Serialize(rawData, buffer));
 
 Console.WriteLine(string.Join(' ', buffer.ToArray()));
 
@@ -15,29 +41,85 @@ Console.ReadLine();
 
 
 
-class Test
+struct Test
 {
-    public bool BooleanTest { get; set; } = true;
-    public sbyte SByteTest { get; set; } = -32;
-    public byte ByteTest { get; set; } = 255;
-    public int IntTest { get; set; } = 6666666;
-    public uint UIntTest { get; set; } = 9986999;
-    public short ShortTest { get; set; } = 4433;
-    public ushort UshortTest { get; set; } = 3344;
-    public long LongTest { get; set; } = -455222;
-    public ulong ULongTest { get; set; } = 455222;
-    public float FloatTest { get; set; } = 1.25f;
-    public double DoubleTest { get; set; } = 1.14444444444d;
-    public char CharTest { get; set; } = 'a';
-    public string StringTest { get; set; } = "Hello World!";
-    public DateTime DtTest { get; set; } = DateTime.UtcNow;
-    public Guid GuidTest { get; set; } = Guid.NewGuid();
-    public TestEnum EnumTest { get; set; } = TestEnum.Val2;
+    public bool BooleanTest { get; set; }
+    public sbyte SByteTest { get; set; }
+    public byte ByteTest { get; set; }
+    public int IntTest { get; set; }
+    public uint UIntTest { get; set; }
+    public short ShortTest { get; set; }
+    public ushort UshortTest { get; set; }
+    public long LongTest { get; set; }
+    public ulong ULongTest { get; set; }
+    public float FloatTest { get; set; } 
+    public double DoubleTest { get; set; }
+    public char CharTest { get; set; }
+    public string StringTest { get; set; }
+    public DateTime DtTest { get; set; }
+    public Guid GuidTest { get; set; } 
+    public TestBEnum EnumTest { get; set; }
+    public TestSBEnum EnumTest1 { get; set; }
+    public TestUSHEnum EnumTest2 { get; set; }
+    public TestSHEnum EnumTest3 { get; set; }
+    public TestINTEnum EnumTest4 { get; set; }
+    public TestUINTEnum EnumTest5 { get; set; }
+    public TestLONEnum EnumTest6 { get; set; }
+    public TestULONEnum EnumTest7 { get; set; }
 
-    public int[] TestInt32Array { get; set; } = new[] { 2, 2, 2, 2, 2, 2, 2, 2, 2 };
+    public int[] TestInt32Array { get; set; }
 }
-
-enum TestEnum
+[Flags]
+ enum TestBEnum : byte
+{
+    None = 0,
+    Val1,
+    Val2,
+    Val3,
+}
+enum TestSBEnum : sbyte
+{
+    None = 0,
+    Val1,
+    Val2,
+    Val3,
+}
+enum TestSHEnum : short
+{
+    None = 0,
+    Val1,
+    Val2,
+    Val3,
+}
+enum TestUSHEnum : ushort
+{
+    None = 0,
+    Val1,
+    Val2,
+    Val3,
+}
+enum TestINTEnum : int
+{
+    None = 0,
+    Val1,
+    Val2,
+    Val3,
+}
+enum TestUINTEnum : uint
+{
+    None = 0,
+    Val1,
+    Val2,
+    Val3,
+}
+enum TestLONEnum : long
+{
+    None = 0,
+    Val1,
+    Val2,
+    Val3,
+}
+enum TestULONEnum : ulong
 {
     None = 0,
     Val1,

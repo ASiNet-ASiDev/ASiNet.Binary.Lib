@@ -17,17 +17,17 @@ public static class BinaryBufferSerializer
     /// <param name="buffer">Буффер в который будет записан обьект.</param>
     /// <param name="encoding">Кодировка в которой будут кодироватся <see cref="String"/>, по умолчанию используется <see cref="Encoding.UTF8"/></param>
     /// <returns><see cref="true"/> если запись прошла успешна, иначе <see cref="false"/></returns>
-    public static bool Serialize<T>(T obj, ref BinaryBuffer buffer, Encoding? encoding = null)
+    public static bool Serialize<T>(in T obj, BinaryBuffer buffer, Encoding? encoding = null)
     {
 		try
 		{
             encoding ??= Encoding.UTF8;
 
-			var data = GetPropertiesAndValues(ref obj, typeof(T));
+			var data = GetPropertiesAndValues(obj, typeof(T));
 
             data.Sort((x, y) => StringComparer.OrdinalIgnoreCase.Compare(x.name, y.name));
 
-            var result = WritePropertiesValueInBuffer(data, ref buffer, encoding);
+            var result = WritePropertiesValueInBuffer(data, buffer, encoding);
             return result;
         }
 		catch
@@ -36,17 +36,17 @@ public static class BinaryBufferSerializer
 		}
     }
 
-    public static bool Serialize(Type type, object obj, ref BinaryBuffer buffer, Encoding? encoding = null)
+    public static bool Serialize(Type type, in object obj, ref BinaryBuffer buffer, Encoding? encoding = null)
     {
         try
         {
             encoding ??= Encoding.UTF8;
 
-            var data = GetPropertiesAndValues(ref obj, type);
+            var data = GetPropertiesAndValues(obj, type);
 
             data.Sort((x, y) => StringComparer.OrdinalIgnoreCase.Compare(x.name, y.name));
 
-            var result = WritePropertiesValueInBuffer(data, ref buffer, encoding);
+            var result = WritePropertiesValueInBuffer(data, buffer, encoding);
             return result;
         }
         catch
@@ -71,7 +71,7 @@ public static class BinaryBufferSerializer
             var data = GetProperties(typeof(T));
 
             data.Sort((x, y) => StringComparer.OrdinalIgnoreCase.Compare(x.name, y.name));
-            var isDone = ReadPropertiesValueFromBuffer(data, ref result, ref buffer, encoding);
+            var isDone = ReadPropertiesValueFromBuffer(data, ref result, buffer, encoding);
             return (T)result;
         }
         catch
@@ -80,7 +80,7 @@ public static class BinaryBufferSerializer
         }
     }
 
-    public static object? Deserialize(Type type, ref BinaryBuffer buffer, Encoding? encoding = null)
+    public static object? Deserialize(Type type, BinaryBuffer buffer, Encoding? encoding = null)
     {
         try
         {
@@ -94,7 +94,7 @@ public static class BinaryBufferSerializer
             var data = GetProperties(type);
 
             data.Sort((x, y) => StringComparer.OrdinalIgnoreCase.Compare(x.name, y.name));
-            var isDone = ReadPropertiesValueFromBuffer(data, ref result, ref buffer, encoding);
+            var isDone = ReadPropertiesValueFromBuffer(data, ref result, buffer, encoding);
             return result;
         }
         catch
@@ -103,7 +103,7 @@ public static class BinaryBufferSerializer
         }
     }
 
-    private static List<(string name, SerializedType type, object? value)> GetPropertiesAndValues<T>(ref T obj, Type type)
+    private static List<(string name, SerializedType type, object? value)> GetPropertiesAndValues<T>(in T obj, Type type)
     {
         var props = type.GetProperties();
         var data = new List<(string name, SerializedType type, object? value)>(props.Length);
@@ -113,8 +113,8 @@ public static class BinaryBufferSerializer
             var propVal = item.GetValue(obj);
 
             var propType = item.PropertyType.IsArray ?
-                GetTypeFromTypeName(item.PropertyType.GetElementType()!.Name, true) :
-                GetTypeFromTypeName(item.PropertyType.Name, false);
+                GetTypeFromTypeName(item.PropertyType.GetElementType()!.Name, true, item.PropertyType.GetElementType()!.IsEnum) :
+                GetTypeFromTypeName(item.PropertyType.Name, false, item.PropertyType.IsEnum);
 
             if (propType == SerializedType.None)
                 continue;
@@ -132,8 +132,8 @@ public static class BinaryBufferSerializer
         {
             var propName = item.Name;
             var propType = item.PropertyType.IsArray ?
-                GetTypeFromTypeName(item.PropertyType.GetElementType()!.Name, true) :
-                GetTypeFromTypeName(item.PropertyType.Name, false);
+                GetTypeFromTypeName(item.PropertyType.GetElementType()!.Name, true, item.PropertyType.GetElementType()!.IsEnum) :
+                GetTypeFromTypeName(item.PropertyType.Name, false, item.PropertyType.IsEnum);
             if (propType == SerializedType.None)
                 continue;
             data.Add((propName, propType, item));
@@ -142,59 +142,67 @@ public static class BinaryBufferSerializer
         return data;
     }
 
-    private static SerializedType GetTypeFromTypeName(string typeName, bool isArray)
+    private static SerializedType GetTypeFromTypeName(string typeName, bool isArray, bool isEnum)
     {
         var propType = SerializedType.None;
         if (isArray)
         {
-            propType = typeName switch
+            if(isEnum)
+                propType = SerializedType.Enum;
+            else
             {
-                nameof(SByte) => SerializedType.SByteArray,
-                nameof(Byte) => SerializedType.ByteArray,
-                nameof(Single) => SerializedType.FloatArray,
-                nameof(Double) => SerializedType.DoubleArray,
-                nameof(Boolean) => SerializedType.BooleanArray,
-                nameof(Int16) => SerializedType.Int16Array,
-                nameof(UInt16) => SerializedType.UInt16Array,
-                nameof(Int32) => SerializedType.Int32Array,
-                nameof(UInt32) => SerializedType.UInt32Array,
-                nameof(Int64) => SerializedType.Int64Array,
-                nameof(UInt64) => SerializedType.UInt64Array,
-                nameof(Char) => SerializedType.CharArray,
-                nameof(String) => SerializedType.StringArray,
-                nameof(DateTime) => SerializedType.DateTimeArray,
-                nameof(Guid) => SerializedType.GuidArray,
-                nameof(Enum) => SerializedType.EnumArray,
-                _ => SerializedType.None,
-            };
+                propType = typeName switch
+                {
+                    nameof(SByte) => SerializedType.SByteArray,
+                    nameof(Byte) => SerializedType.ByteArray,
+                    nameof(Single) => SerializedType.FloatArray,
+                    nameof(Double) => SerializedType.DoubleArray,
+                    nameof(Boolean) => SerializedType.BooleanArray,
+                    nameof(Int16) => SerializedType.Int16Array,
+                    nameof(UInt16) => SerializedType.UInt16Array,
+                    nameof(Int32) => SerializedType.Int32Array,
+                    nameof(UInt32) => SerializedType.UInt32Array,
+                    nameof(Int64) => SerializedType.Int64Array,
+                    nameof(UInt64) => SerializedType.UInt64Array,
+                    nameof(Char) => SerializedType.CharArray,
+                    nameof(String) => SerializedType.StringArray,
+                    nameof(DateTime) => SerializedType.DateTimeArray,
+                    nameof(Guid) => SerializedType.GuidArray,
+                    _ => SerializedType.None,
+                };
+            }
         }
         else
         {
-            propType = typeName switch
+            if (isEnum)
+                propType = SerializedType.Enum;
+            else
             {
-                nameof(SByte) => SerializedType.SByte,
-                nameof(Byte) => SerializedType.Byte,
-                nameof(Single) => SerializedType.Float,
-                nameof(Double) => SerializedType.Double,
-                nameof(Boolean) => SerializedType.Boolean,
-                nameof(Int16) => SerializedType.Int16,
-                nameof(UInt16) => SerializedType.UInt16,
-                nameof(Int32) => SerializedType.Int32,
-                nameof(UInt32) => SerializedType.UInt32,
-                nameof(Int64) => SerializedType.Int64,
-                nameof(UInt64) => SerializedType.UInt64,
-                nameof(Char) => SerializedType.Char,
-                nameof(String) => SerializedType.String,
-                nameof(DateTime) => SerializedType.DateTime,
-                nameof(Guid) => SerializedType.Guid,
-                nameof(Enum) => SerializedType.Enum,
-                _ => SerializedType.None,
-            };
+                propType = typeName switch
+                {
+                    nameof(SByte) => SerializedType.SByte,
+                    nameof(Byte) => SerializedType.Byte,
+                    nameof(Single) => SerializedType.Float,
+                    nameof(Double) => SerializedType.Double,
+                    nameof(Boolean) => SerializedType.Boolean,
+                    nameof(Int16) => SerializedType.Int16,
+                    nameof(UInt16) => SerializedType.UInt16,
+                    nameof(Int32) => SerializedType.Int32,
+                    nameof(UInt32) => SerializedType.UInt32,
+                    nameof(Int64) => SerializedType.Int64,
+                    nameof(UInt64) => SerializedType.UInt64,
+                    nameof(Char) => SerializedType.Char,
+                    nameof(String) => SerializedType.String,
+                    nameof(DateTime) => SerializedType.DateTime,
+                    nameof(Guid) => SerializedType.Guid,
+                    _ => SerializedType.None,
+                };
+            }
         }
         return propType;
     }
 
-    private static bool WritePropertiesValueInBuffer(List<(string name, SerializedType type, object? value)> props, ref BinaryBuffer buffer, Encoding encoding)
+    private static bool WritePropertiesValueInBuffer(List<(string name, SerializedType type, object? value)> props, BinaryBuffer buffer, Encoding encoding)
     {
         foreach (var (name, type, value) in props)
         {
@@ -243,7 +251,7 @@ public static class BinaryBufferSerializer
         return true;
     }
 
-    private static bool ReadPropertiesValueFromBuffer(List<(string name, SerializedType type, PropertyInfo pi)> props, ref object obj, ref BinaryBuffer buffer, Encoding encoding)
+    private static bool ReadPropertiesValueFromBuffer(List<(string name, SerializedType type, PropertyInfo pi)> props, ref object obj, BinaryBuffer buffer, Encoding encoding)
     {
         foreach (var (name, type, pi) in props)
         {
