@@ -3,9 +3,11 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.5.33402.96
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ASiNet.Binary.Lib", "ASiNet.Binary.Lib\ASiNet.Binary.Lib.csproj", "{07AC022C-E637-4F26-B580-27834D398A55}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ASiNet.Binary.Lib", "ASiNet.Binary.Lib\ASiNet.Binary.Lib.csproj", "{07AC022C-E637-4F26-B580-27834D398A55}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Test", "Test\Test.csproj", "{D3300EBE-E729-4D09-9DE8-93471798D690}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Test", "Test\Test.csproj", "{D3300EBE-E729-4D09-9DE8-93471798D690}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ASiNet.Binary.LibTests", "ASiNet.Binary.LibTests\ASiNet.Binary.LibTests.csproj", "{8530F9C2-C987-4DCE-9799-9678ADE107F1}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,6 +23,10 @@ Global
 		{D3300EBE-E729-4D09-9DE8-93471798D690}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{D3300EBE-E729-4D09-9DE8-93471798D690}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{D3300EBE-E729-4D09-9DE8-93471798D690}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8530F9C2-C987-4DCE-9799-9678ADE107F1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8530F9C2-C987-4DCE-9799-9678ADE107F1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8530F9C2-C987-4DCE-9799-9678ADE107F1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8530F9C2-C987-4DCE-9799-9678ADE107F1}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

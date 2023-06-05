@@ -1,8 +1,10 @@
 ﻿using ASiNet.Binary.Lib;
+using ASiNet.Binary.Lib.Serializer;
+using ASiNet.Binary.Lib.Serializer.Attributes;
 
 var w = 0;
 var r = 0;
-var buffer = new BinaryBuffer(stackalloc byte[4096], stackalloc byte[512], ref w, ref r);
+var buffer = new BinaryBuffer(stackalloc byte[4096], stackalloc byte[sizeof(decimal)], ref w, ref r);
 
 var rawData = new Test()
 { 
@@ -28,22 +30,46 @@ var rawData = new Test()
     ShortTest = -55,
     UIntTest = 5554,
     ULongTest = 25552,
-    UshortTest = 62433 
+    UshortTest = 62433,
+    ObjectTest = new() { FirstName = "Bob", LastName = "Titer", Id = 455, Ref = new() { FirstName = "Goblin", Id = 8888,  Ref = null, } },
+    TestObjectArray = new User[] { new(533, "Жора", string.Empty), new(534, "Инакендий", ""), new(535, "Елена", null) }
 };
 
 Console.WriteLine(BinaryBufferSerializer.Serialize(rawData, buffer));
 
 Console.WriteLine(string.Join(' ', buffer.ToArray()));
 
-var obj = BinaryBufferSerializer.Deserialize<Test>(ref buffer);
+var obj = BinaryBufferSerializer.Deserialize<Test>(buffer);
 
 Console.ReadLine();
 
+class User
+{
+    public User()
+    {
+        
+    }
 
+    public User(int id, string f, string l)
+    {
+        FirstName = f;
+        LastName = l;
+        Id = id;
+    }
 
+    public int Id { get; set; }
+    public string FirstName { get; set; }
+    
+    public string LastName { get; set; }
+
+    public User? Ref { get; set; }
+}
 struct Test
 {
+    public User[] TestObjectArray { get; set; }
+    public User ObjectTest { get; set; }
     public bool BooleanTest { get; set; }
+    public bool? NullTest { get; set; }
     public sbyte SByteTest { get; set; }
     public byte ByteTest { get; set; }
     public int IntTest { get; set; }
@@ -57,7 +83,7 @@ struct Test
     public char CharTest { get; set; }
     public string StringTest { get; set; }
     public DateTime DtTest { get; set; }
-    public Guid GuidTest { get; set; } 
+    public Guid GuidTest { get; set; }
     public TestBEnum EnumTest { get; set; }
     public TestSBEnum EnumTest1 { get; set; }
     public TestUSHEnum EnumTest2 { get; set; }

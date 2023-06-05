@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace ASiNet.Binary.Lib;
+namespace ASiNet.Binary.Lib.Serializer;
 public enum SerializedType
 {
     None,
@@ -24,6 +24,7 @@ public enum SerializedType
     Guid,
     Char,
     String,
+    Object,
 
     BooleanArray,
     SByteArray,
@@ -41,4 +42,5 @@ public enum SerializedType
     GuidArray,
     CharArray,
     StringArray,
+    ObjectArray,
 }

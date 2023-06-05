@@ -258,11 +258,13 @@ public static class BinaryBufferBaseTypes
 
     public static string ReadString(this BinaryBuffer self, Encoding encoding)
     {
-        self.ReadToBuffer(sizeof(int));
-        var buffer = self.GetBuffer();
-        var size = BitConverter.ToInt32(buffer);
-        self.ReadToBuffer((ushort)size);
-        var str = encoding.GetString(buffer.Slice(0, size));
+        var size = ReadInt32(self);
+
+        var strBuff = new Span<byte>(new byte[size]);
+
+        self.ReadToSpan(strBuff);
+        
+        var str = encoding.GetString(strBuff);
         return str;
     }
 

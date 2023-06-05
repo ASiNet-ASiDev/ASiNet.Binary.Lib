@@ -18,4 +18,28 @@ public static class Helper
         return (Enum)Enum.Parse(type, x.ToString()!);
     }
 
+
+    public static Enum[] ToEnumArray(object enumArray)
+    {
+        var baseArray = (enumArray as Array)!;
+
+        var arr = Array.CreateInstance(typeof(Enum), baseArray.Length);
+
+        for (int i = 0; i < baseArray.Length; i++)
+        {
+            arr.SetValue(baseArray.GetValue(i), i);
+        }
+        return (Enum[])arr;
+    }
+
+    public static object FromEnumArray(Enum[] arr, Type enumType)
+    {
+        var res = Array.CreateInstance(enumType, arr.Length);
+
+        for (int i = 0; i < arr.Length; i++)
+        {
+            res.SetValue(arr[i], i);
+        }
+        return res;
+    }
 }

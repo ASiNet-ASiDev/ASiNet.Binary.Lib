@@ -135,7 +135,7 @@ public static class BinaryBufferArrays
         buffer.Write(array.Length);
         foreach (var item in array)
         {
-            buffer.Write(item);
+            buffer.Write((Enum)item);
         }
         return true;
     }
@@ -165,7 +165,7 @@ public static class BinaryBufferArrays
         buffer.Write(array.Length);
         foreach (var item in array)
         {
-            buffer.WriteSpan(item, encoding);
+            buffer.Write(item, encoding);
         }
         return true;
     }

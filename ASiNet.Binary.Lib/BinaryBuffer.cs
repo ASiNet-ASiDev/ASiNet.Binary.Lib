@@ -148,6 +148,15 @@ public ref struct BinaryBuffer
         return true;
     }
 
+    public bool ReadToSpan(Span<byte> dist)
+    {
+        var data = _area.Slice(_readPosition, dist.Length);
+        data.CopyTo(dist);
+        _readPosition += dist.Length;
+        return true;
+    }
+
+
     #region to
     /// <summary>
     /// Преобразует <see cref="BinaryBuffer"/> в <see cref="Span{T}"/> обрезая незадействоное пространство используя <see cref="Span{T}.Slice(int, int)"/>.
