@@ -1,154 +1,178 @@
 ﻿using ASiNet.Binary.Lib;
 using ASiNet.Binary.Lib.Serializer;
 using ASiNet.Binary.Lib.Serializer.Attributes;
+using BenchmarkDotNet.Attributes;
+using BenchmarkDotNet.Running;
+using ProtoBuf;
+using System;
+using System.Reflection.Metadata;
+using System.Runtime.Serialization.Formatters.Binary;
+using System.Text.Json;
+using System.Xml.Serialization;
 
-var w = 0;
-var r = 0;
-var buffer = new BinaryBuffer(stackalloc byte[4096], stackalloc byte[sizeof(decimal)], ref w, ref r);
+BenchmarkRunner.Run<BinaryBufferSerializerTest>();
 
-var rawData = new Test()
-{ 
-    EnumTest = TestBEnum.Val3,
-    EnumTest1 = TestSBEnum.Val3,
-    EnumTest2 = TestUSHEnum.Val3,
-    EnumTest3 = TestSHEnum.Val3,
-    EnumTest4 = TestINTEnum.Val3,
-    EnumTest5 = TestUINTEnum.Val3,
-    EnumTest6 = TestLONEnum.Val3,
-    EnumTest7 = TestULONEnum.Val3,
-    StringTest = "wgbwbwbwbwывпц", 
-    TestInt32Array = new[] { 4, 5, 4, 5, 4, 5, 4, 5 }, 
-    BooleanTest = true, 
-    ByteTest = 127, 
-    CharTest = 'C', 
-    DoubleTest = 1.1f, 
-    DtTest = DateTime.MaxValue, 
-    FloatTest = 1.2f, GuidTest = Guid.NewGuid(), 
-    IntTest = -3388, 
-    LongTest = -44455,
-    SByteTest = -33, 
-    ShortTest = -55,
-    UIntTest = 5554,
-    ULongTest = 25552,
-    UshortTest = 62433,
-    ObjectTest = new() { FirstName = "Bob", LastName = "Titer", Id = 455, Ref = new() { FirstName = "Goblin", Id = 8888,  Ref = null, } },
-    TestObjectArray = new User[] { new(533, "Жора", string.Empty), new(534, "Инакендий", ""), new(535, "Елена", null) }
-};
-
-Console.WriteLine(BinaryBufferSerializer.Serialize(rawData, buffer));
-
-Console.WriteLine(string.Join(' ', buffer.ToArray()));
-
-var obj = BinaryBufferSerializer.Deserialize<Test>(buffer);
+//var bb = new BinaryBufferSerializerTest();
+//bb.BinaryBufferSerializer_SerializerTest();
 
 Console.ReadLine();
 
-class User
+[MemoryDiagnoser]
+public class BinaryBufferSerializerTest
 {
-    public User()
+    private A _obj = new();
+
+    [Benchmark]
+    public void BinaryBufferSerializer_SerializerTest()
     {
-        
+        var r = 0;
+        var w = 0;
+        var bb = new BinaryBuffer(stackalloc byte[ushort.MaxValue], stackalloc byte[sizeof(decimal)], ref r, ref w);
+
+
+        var result = BinaryBufferSerializer.Serialize(_obj, bb);
+
+        _obj = BinaryBufferSerializer.Deserialize<A>(bb)!;
+
+        //using (var fs = new FileStream(@"C:\Users\Alexa\OneDrive\Рабочий стол\binbuf.txt", FileMode.Create)) 
+        //{
+        //    fs.Write(bb.ToSpan());
+        //}
     }
 
-    public User(int id, string f, string l)
+    [Benchmark]
+    public void JsonSerializer_SerializerTest()
     {
-        FirstName = f;
-        LastName = l;
-        Id = id;
+        var result = JsonSerializer.SerializeToUtf8Bytes(_obj);
+
+        _obj = JsonSerializer.Deserialize<A>(result)!;
+
+        //using (var fs = new FileStream(@"C:\Users\Alexa\OneDrive\Рабочий стол\json.txt", FileMode.Create))
+        //{
+        //    fs.Write(result);
+        //}
     }
 
+    //[Benchmark]
+    //public void XmlSerializer_SerializerTest()
+    //{
+    //    using (var fs = new FileStream(@"C:\Users\Alexa\OneDrive\Рабочий стол\xml.txt", FileMode.Create))
+    //    {
+    //        var serializer = new XmlSerializer(typeof(A));
+    //        serializer.Serialize(fs, _obj);
+    //        //fs.Position = 0;
+    //        //_obj = (A)serializer.Deserialize(fs)!;
+    //    }
+    //}
+
+    //[Benchmark]
+    //public void Protobuf_SerializerTest()
+    //{
+    //    using (var fs = new FileStream(@"C:\Users\Alexa\OneDrive\Рабочий стол\protobuf.txt", FileMode.Create))
+    //    {
+    //        Serializer.Serialize(fs, _obj);
+    //        //fs.Position = 0;
+    //        //_obj = Serializer.Deserialize<A>(fs);
+    //    } 
+    //}
+}
+
+[ProtoContract]
+public class A
+{
+    [ProtoMember(1)]
+    public int C { get; set; } = 89395;
+    [ProtoMember(2)]
+    public short D { get; set; } = 433;
+    [ProtoMember(3)]
+    public uint C1 { get; set; } = 342;
+    [ProtoMember(4)]
+    public ushort D1 { get; set; } = 42422;
+
+    [ProtoMember(5)]
+    public byte C2 { get; set; } = 42;
+    [ProtoMember(6)]
+    public sbyte D2 { get; set; } = 54;
+    [ProtoMember(7)]
+    public long C3 { get; set; } = 422222;
+    [ProtoMember(8)]
+    public ulong D3 { get; set; } = 5622222;
+    [ProtoMember(9)]
+    public float F1 { get; set; } = 1344.66f;
+    [ProtoMember(10)]
+    public double F2 { get; set; } = 13325.755555f;
+    [ProtoMember(11)]
+    public string Str { get; set; } = "32r2t33jojvvnvwnivnwщцмтщцтмщцтщшмцмттмщцтщмштуцщшмтщшцтмщшцтщшмтцшщмщшцтмщш";
+    [ProtoMember(12)]
+    public char Ch { get; set; } = 'a';
+    [ProtoMember(13)]
+    public DateTime Dt { get; set; } = DateTime.UtcNow;
+    [ProtoMember(14)]
+    public Guid G { get; set; } = Guid.NewGuid();
+    //[ProtoMember(15)]
+    //public SerializedType En { get; set; } = SerializedType.Byte;
+    //[ProtoMember(16)]
+    //public Arrays Arr { get; set; } = new();
+    //[ProtoMember(17)]
+    //public User[] Users { get; set; } = new User[] 
+    //{ 
+    //    new User() { FirstName = "Джин", Id = 99, LastName = "5333", RefU = new() { FirstName = "geegee", Id = 522, LastName = "2r2222", RefU = new() { FirstName = "f33", Id = 993, } } },
+    //    new User() { FirstName = "Джин", Id = 99, LastName = "5333", RefU = new() { FirstName = "geegee", Id = 522, LastName = "2r2222", RefU = new() { FirstName = "f33", Id = 993, } } },
+    //    new User() { FirstName = "Джин", Id = 99, LastName = "5333", RefU = new() { FirstName = "geegee", Id = 522, LastName = "2r2222", RefU = new() { FirstName = "f33", Id = 993, } } },
+    //    new User() { FirstName = "Джин", Id = 99, LastName = "5333", RefU = new() { FirstName = "geegee", Id = 522, LastName = "2r2222", RefU = new() { FirstName = "f33", Id = 993, } } },
+    //    new User() { FirstName = "Джин", Id = 99, LastName = "5333", RefU = new() { FirstName = "geegee", Id = 522, LastName = "2r2222", RefU = new() { FirstName = "f33", Id = 993, } } },
+    //    new User() { FirstName = "Джин", Id = 99, LastName = "5333", RefU = new() { FirstName = "geegee", Id = 522, LastName = "2r2222", RefU = new() { FirstName = "f33", Id = 993, } } },
+    //    new User() { FirstName = "Джин", Id = 99, LastName = "5333", RefU = new() { FirstName = "geegee", Id = 522, LastName = "2r2222", RefU = new() { FirstName = "f33", Id = 993, } } },
+    //    new User() { FirstName = "Джин", Id = 99, LastName = "5333", RefU = new() { FirstName = "geegee", Id = 522, LastName = "2r2222", RefU = new() { FirstName = "f33", Id = 993, } } },
+    //    new User() { FirstName = "Джин", Id = 99, LastName = "5333", RefU = new() { FirstName = "geegee", Id = 522, LastName = "2r2222", RefU = new() { FirstName = "f33", Id = 993, } } },
+    //    new User() { FirstName = "Джин", Id = 99, LastName = "5333", RefU = new() { FirstName = "geegee", Id = 522, LastName = "2r2222", RefU = new() { FirstName = "f33", Id = 993, } } },
+    //};
+}
+[ProtoContract]
+public class User
+{
+    [ProtoMember(1)]
     public int Id { get; set; }
-    public string FirstName { get; set; }
-    
-    public string LastName { get; set; }
+    [ProtoMember(2)]
+    public string? FirstName { get; set; }
+    [ProtoMember(3)]
+    public string? LastName { get; set; }
+    [ProtoMember(4)]
+    public User? RefU { get; set; }
+}
 
-    public User? Ref { get; set; }
-}
-struct Test
+[ProtoContract]
+public class Arrays
 {
-    public User[] TestObjectArray { get; set; }
-    public User ObjectTest { get; set; }
-    public bool BooleanTest { get; set; }
-    public bool? NullTest { get; set; }
-    public sbyte SByteTest { get; set; }
-    public byte ByteTest { get; set; }
-    public int IntTest { get; set; }
-    public uint UIntTest { get; set; }
-    public short ShortTest { get; set; }
-    public ushort UshortTest { get; set; }
-    public long LongTest { get; set; }
-    public ulong ULongTest { get; set; }
-    public float FloatTest { get; set; } 
-    public double DoubleTest { get; set; }
-    public char CharTest { get; set; }
-    public string StringTest { get; set; }
-    public DateTime DtTest { get; set; }
-    public Guid GuidTest { get; set; }
-    public TestBEnum EnumTest { get; set; }
-    public TestSBEnum EnumTest1 { get; set; }
-    public TestUSHEnum EnumTest2 { get; set; }
-    public TestSHEnum EnumTest3 { get; set; }
-    public TestINTEnum EnumTest4 { get; set; }
-    public TestUINTEnum EnumTest5 { get; set; }
-    public TestLONEnum EnumTest6 { get; set; }
-    public TestULONEnum EnumTest7 { get; set; }
+    [ProtoMember(1)]
+    public int[] C { get; set; } = { 1, 2, 3, 4, 5 };
+    [ProtoMember(2)]
+    public short[] D { get; set; } = { 1, 2, 3, 4, 5 };
+    [ProtoMember(3)]
+    public uint[] C1 { get; set; } = { 1, 2, 3, 4, 5 };
+    [ProtoMember(4)]
+    public ushort[] D1 { get; set; } = { 1, 2, 3, 4, 5 };
+    [ProtoMember(5)]
+    public byte[] C2 { get; set; } = { 1, 2, 3, 4, 5 };
+    [ProtoMember(6)]
+    public sbyte[] D2 { get; set; } = { 1, 2, 3, 4, 5 };
+    [ProtoMember(7)]
+    public long[] C3 { get; set; } = { 1, 2, 3, 4, 5 };
 
-    public int[] TestInt32Array { get; set; }
-}
-[Flags]
- enum TestBEnum : byte
-{
-    None = 0,
-    Val1,
-    Val2,
-    Val3,
-}
-enum TestSBEnum : sbyte
-{
-    None = 0,
-    Val1,
-    Val2,
-    Val3,
-}
-enum TestSHEnum : short
-{
-    None = 0,
-    Val1,
-    Val2,
-    Val3,
-}
-enum TestUSHEnum : ushort
-{
-    None = 0,
-    Val1,
-    Val2,
-    Val3,
-}
-enum TestINTEnum : int
-{
-    None = 0,
-    Val1,
-    Val2,
-    Val3,
-}
-enum TestUINTEnum : uint
-{
-    None = 0,
-    Val1,
-    Val2,
-    Val3,
-}
-enum TestLONEnum : long
-{
-    None = 0,
-    Val1,
-    Val2,
-    Val3,
-}
-enum TestULONEnum : ulong
-{
-    None = 0,
-    Val1,
-    Val2,
-    Val3,
+    [ProtoMember(8)]
+    public ulong[] D3 { get; set; } = { 1, 2, 3, 4, 5 };
+    [ProtoMember(9)]
+    public float[] F1 { get; set; } = { 1.1f, 2.1f, 3.1f, 4.1f, 5.1f };
+    [ProtoMember(10)]
+    public double[] F2 { get; set; } = { 1.1d, 2.1d, 3.1d, 4.1d, 5.1d };
+    [ProtoMember(11)]
+    public string[] Str { get; set; } = { "Hello World 1", "Hello World 2", "Hello World 3", "Hello World 4", "Hello World 5", };
+    [ProtoMember(12)]
+    public char[] Ch { get; set; } = { 'A', 'B', 'C', 'D', 'E' };
+    [ProtoMember(13)]
+    public DateTime[] Dt { get; set; } = { DateTime.MinValue, DateTime.MinValue, DateTime.MinValue, DateTime.MinValue, DateTime.MinValue };
+    [ProtoMember(14)]
+    public Guid[] G { get; set; } = { Guid.Empty, Guid.Empty, Guid.Empty, Guid.Empty, Guid.Empty };
+    [ProtoMember(15)]
+    public SerializedType[] En { get; set; } = { SerializedType.Boolean, SerializedType.SByte, SerializedType.Int16, SerializedType.UInt32, SerializedType.UInt64 };
 }

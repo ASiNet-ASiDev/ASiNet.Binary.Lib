@@ -4,13 +4,19 @@ using ASiNet.Binary.Lib.Serializer.Attributes;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 
 namespace ASiNet.Binary.Lib.Serializer;
+
+public delegate object DeserializeObjLambda(BinaryBuffer buffer, Encoding encoding);
+public delegate void SerializeObjLambda(object obj, BinaryBuffer buffer, Encoding encoding);
 public static class BinaryBufferSerializer
 {
+    private static Dictionary<string, (DeserializeObjLambda Deserialize, SerializeObjLambda Serialize)> _buffer = new();
+
     /// <summary>
     /// Записывает обьект в <see cref="BinaryBuffer"/>, может игнорировать некоторые типы.
     /// </summary>
@@ -81,278 +87,215 @@ public static class BinaryBufferSerializer
 
     private static bool BaseSerialize(Type type, in object obj, BinaryBuffer buffer, Encoding encoding)
     {
-        var data = GetPropertiesAndValues(obj, type);
-
-        data.Sort((x, y) => StringComparer.OrdinalIgnoreCase.Compare(x.name, y.name));
-
-        var result = WritePropertiesValueInBuffer(data, buffer, encoding);
-        return result;
+        var lambda = GenerateLambdaFromTypeOrGetFromBuffer(type);
+        lambda.Serialize(obj, buffer, encoding);
+        return true;
     }
 
     private static object? BaseDeserialize(Type type, BinaryBuffer buffer, Encoding encoding)
     {
-        var result = Activator.CreateInstance(type);
-
-        if (result is null)
-            throw new NullReferenceException();
-
-        var data = GetProperties(type);
-
-        data.Sort((x, y) => StringComparer.OrdinalIgnoreCase.Compare(x.name, y.name));
-        var isDone = ReadPropertiesValueFromBuffer(data, ref result, buffer, encoding);
+        var lambda = GenerateLambdaFromTypeOrGetFromBuffer(type);
+        var result = lambda.Deserialize(buffer, encoding);
         return result;
     }
 
-    private static List<(string name, SerializedType type, object? value)> GetPropertiesAndValues<T>(in T obj, Type type)
+    public static (DeserializeObjLambda Deserialize, SerializeObjLambda Serialize) GenerateLambdaFromTypeOrGetFromBuffer(Type type)
     {
-        var props = type.GetProperties();
-        var data = new List<(string name, SerializedType type, object? value)>(props.Length);
-        foreach (var item in props)
-        {
-            if(item.GetCustomAttribute<IgnorePropertyAttribute>() is not null)
-                continue;
-            var propName = item.Name;
-            var propVal = item.GetValue(obj);
+        if(_buffer.TryGetValue(type.Name, out var value))
+            return value;
 
-            var propType = item.PropertyType.IsArray ?
-                GetTypeFromTypeName(item.PropertyType.GetElementType()!.Name, true, item.PropertyType.GetElementType()!.IsEnum) :
-                GetTypeFromTypeName(item.PropertyType.Name, false, item.PropertyType.IsEnum);
+        var deserialize = GenerateDeserializeLambda(type);
+        var serialize = GenerateSerializeLambda(type);
 
-            if (propType == SerializedType.None)
-                continue;
-            data.Add((propName, propType, propVal));
-        }
+        _buffer.TryAdd(type.Name, (deserialize, serialize));
 
-        return data;
+        return (deserialize, serialize);
     }
 
-    private static List<(string name, SerializedType type, PropertyInfo pi)> GetProperties(Type type)
+    private static DeserializeObjLambda GenerateDeserializeLambda(Type type)
     {
-        var props = type.GetProperties();
-        var data = new List<(string name, SerializedType type, PropertyInfo pi)>(props.Length);
-        foreach (var item in props)
-        {
-            if (item.GetCustomAttribute<IgnorePropertyAttribute>() is not null)
-                continue;
-            var propName = item.Name;
-            var propType = item.PropertyType.IsArray ?
-                GetTypeFromTypeName(item.PropertyType.GetElementType()!.Name, true, item.PropertyType.GetElementType()!.IsEnum) :
-                GetTypeFromTypeName(item.PropertyType.Name, false, item.PropertyType.IsEnum);
-            if (propType == SerializedType.None)
-                continue;
-            data.Add((propName, propType, item));
-        }
+        var bb = typeof(BinaryBuffer);
 
-        return data;
+        var inst = Expression.New(type);
+
+        var binbufParameter = Expression.Parameter(bb);
+        var encodingParameter = Expression.Parameter(typeof(Encoding));
+        
+        var binbufVar = Expression.Variable(bb);
+        var instVar = Expression.Variable(type);
+        var encodingVar = Expression.Variable(typeof(Encoding));
+
+
+        var variables = new[] { instVar, binbufVar, encodingVar };
+        var body = new List<Expression>();
+
+        // VARIABLES
+        body.AddRange(new[] 
+        { 
+            Expression.Assign(instVar, inst),
+            Expression.Assign(binbufVar, binbufParameter),
+            Expression.Assign(encodingVar, encodingParameter)
+        });
+
+        // SET_PRORERTIES
+        body.AddRange(SetProperties(type, binbufVar, instVar, encodingVar));
+
+        // RETURN
+        body.Add(instVar);
+
+        var block = Expression.Block(variables, body);
+
+        var lambdaRaw = Expression.Lambda<DeserializeObjLambda>(block, binbufParameter, encodingParameter);
+        var lambda = lambdaRaw.Compile();
+        return lambda;
     }
 
-    private static SerializedType GetTypeFromTypeName(string typeName, bool isArray, bool isEnum)
+    private static List<Expression> SetProperties(Type type, Expression binbuf, Expression inst, Expression encoding)
     {
-        var propType = SerializedType.None;
-        if (isArray)
+        var result = new List<Expression>();
+
+        var data = type.GetProperties().ToList();
+
+        data.Sort((x, y) => StringComparer.OrdinalIgnoreCase.Compare(x.Name, y.Name));
+
+        foreach (var property in data)
         {
-            if (isEnum)
-                propType = SerializedType.EnumArray;
-            else
+            var value = DeserializeToProperty(property.PropertyType, binbuf, inst, encoding);
+
+            result.Add(Expression.IfThenElse(value.isNotNull,
+                Expression.Assign(Expression.Property(inst, property.Name), value.value), 
+                Expression.Assign(Expression.Property(inst, property.Name), value.defaultValue)));
+        }
+
+        return result;
+    }
+
+    private static (Expression isNotNull, Expression value, Expression defaultValue) DeserializeToProperty(Type propType, Expression binbuf, Expression inst, Expression encoding)
+    {
+        if (!propType.IsArray)
+        {
+            var isNotNull = Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.ReadBoolean), null, binbuf);
+
+            var (result, defaultValue) = propType.Name switch
             {
-                propType = typeName switch
-                {
-                    nameof(SByte) => SerializedType.SByteArray,
-                    nameof(Byte) => SerializedType.ByteArray,
-                    nameof(Single) => SerializedType.FloatArray,
-                    nameof(Double) => SerializedType.DoubleArray,
-                    nameof(Boolean) => SerializedType.BooleanArray,
-                    nameof(Int16) => SerializedType.Int16Array,
-                    nameof(UInt16) => SerializedType.UInt16Array,
-                    nameof(Int32) => SerializedType.Int32Array,
-                    nameof(UInt32) => SerializedType.UInt32Array,
-                    nameof(Int64) => SerializedType.Int64Array,
-                    nameof(UInt64) => SerializedType.UInt64Array,
-                    nameof(Char) => SerializedType.CharArray,
-                    nameof(String) => SerializedType.StringArray,
-                    nameof(DateTime) => SerializedType.DateTimeArray,
-                    nameof(Guid) => SerializedType.GuidArray,
-                    _ => SerializedType.ObjectArray,
-                };
-            }
+                nameof (SByte) => (Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.ReadSByte), null, binbuf), Expression.Constant(default(sbyte))),
+                nameof (Byte) => (Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.ReadByte), null, binbuf), Expression.Constant(default(byte))),
+                nameof (Single) => (Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.ReadSingle), null, binbuf), Expression.Constant(default(float))),
+                nameof (Double) => (Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.ReadDouble), null, binbuf), Expression.Constant(default(double))),
+                nameof (Boolean) => (Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.ReadBoolean), null, binbuf), Expression.Constant(default(bool))),
+                nameof (Int16) => (Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.ReadInt16), null, binbuf), Expression.Constant(default(short))),
+                nameof (UInt16) => (Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.ReadUInt16), null, binbuf), Expression.Constant(default(ushort))),
+                nameof (Int32) => (Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.ReadInt32), null, binbuf), Expression.Constant(default(int))),
+                nameof (UInt32) => (Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.ReadUInt32), null, binbuf), Expression.Constant(default(uint))),
+                nameof (Int64) => (Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.ReadInt64), null, binbuf), Expression.Constant(default(long))),
+                nameof (UInt64) => (Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.ReadUInt64), null, binbuf), Expression.Constant(default(ulong))),
+                nameof (Char) => (Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.ReadChar), null, binbuf), Expression.Constant(default(char))),
+                nameof (String) => (Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.ReadString), null, binbuf, encoding), Expression.Constant(default(string), typeof(string))),
+                nameof (DateTime) => (Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.ReadDateTime), null, binbuf), Expression.Constant(default(DateTime))),
+                nameof (Guid) => (Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.ReadGuid), null, binbuf), Expression.Constant(default(Guid))),
+                _ => throw new NotImplementedException(),  
+            };
+            return (isNotNull, result, defaultValue);
         }
         else
         {
-            if (isEnum)
-                propType = SerializedType.Enum;
-            else
-            {
-                propType = typeName switch
-                {
-                    nameof(SByte) => SerializedType.SByte,
-                    nameof(Byte) => SerializedType.Byte,
-                    nameof(Single) => SerializedType.Float,
-                    nameof(Double) => SerializedType.Double,
-                    nameof(Boolean) => SerializedType.Boolean,
-                    nameof(Int16) => SerializedType.Int16,
-                    nameof(UInt16) => SerializedType.UInt16,
-                    nameof(Int32) => SerializedType.Int32,
-                    nameof(UInt32) => SerializedType.UInt32,
-                    nameof(Int64) => SerializedType.Int64,
-                    nameof(UInt64) => SerializedType.UInt64,
-                    nameof(Char) => SerializedType.Char,
-                    nameof(String) => SerializedType.String,
-                    nameof(DateTime) => SerializedType.DateTime,
-                    nameof(Guid) => SerializedType.Guid,
-                    _ => SerializedType.Object,
-                };
-            }
+            var arrType = propType.GetElementType();
+            throw new NotImplementedException();
         }
-        return propType;
     }
 
-    private static bool WritePropertiesValueInBuffer(List<(string name, SerializedType type, object? value)> props, BinaryBuffer buffer, Encoding encoding)
+    private static SerializeObjLambda GenerateSerializeLambda(Type type)
     {
-        foreach (var (name, type, value) in props)
+        var bb = typeof(BinaryBuffer);
+
+        var binbufParameter = Expression.Parameter(bb);
+        var encodingParameter = Expression.Parameter(typeof(Encoding));
+        var instParameter = Expression.Parameter(typeof(object));
+
+
+        var binbufVar = Expression.Variable(bb);
+        var instVar = Expression.Variable(type);
+        var encodingVar = Expression.Variable(typeof(Encoding));
+        var isNull = Expression.Variable(typeof(bool));
+
+        var variables = new[] { instVar, binbufVar, encodingVar, isNull };
+        var body = new List<Expression>();
+
+        // VARIABLES
+        body.AddRange(new[]
         {
-            if (value is null)
+            Expression.Assign(instVar, Expression.TypeAs(instParameter, type)),
+            Expression.Assign(binbufVar, binbufParameter),
+            Expression.Assign(encodingVar, encodingParameter)
+        });
+
+        // SET_PRORERTIES
+        body.AddRange(GetProperties(type, isNull, binbufVar, instVar, encodingVar));
+
+        // RETURN
+        body.Add(instVar);
+
+        var block = Expression.Block(variables, body);
+
+        var lambdaRaw = Expression.Lambda<SerializeObjLambda>(block, instParameter, binbufParameter, encodingParameter);
+        var lambda = lambdaRaw.Compile();
+        return lambda;
+    }
+
+    private static List<Expression> GetProperties(Type type, Expression isNull, Expression binbuf, Expression inst, Expression encoding)
+    {
+        var result = new List<Expression>();
+
+        var data = type.GetProperties().ToList();
+
+        data.Sort((x, y) => StringComparer.OrdinalIgnoreCase.Compare(x.Name, y.Name));
+
+        foreach (var property in data)
+        {
+            var prop = Expression.Property(inst, property.Name);
+            var value = SerializeToBuffer(property.PropertyType, binbuf, prop, inst, encoding);
+            
+            result.Add(Expression.Assign(isNull, Expression.IsTrue(value.isNotNull)));
+
+            result.Add(Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.Write), null, binbuf, isNull));
+            result.Add(Expression.IfThen(isNull, value.method));
+        }
+
+        return result;
+    }
+
+
+    private static (Expression isNotNull, Expression method) SerializeToBuffer(Type propType, Expression binbuf, Expression property, Expression inst, Expression encoding)
+    {
+        if (!propType.IsArray)
+        {
+            var isNotNull = Expression.TypeIs(property, property.Type);
+
+            var result = propType.Name switch
             {
-                buffer.Write(SerializeFlags.NullValue);
-                continue;
-            }
-            buffer.Write(true);
-            var result = type switch
-            {
-                // BASE TYPES
-                SerializedType.SByte => buffer.Write((sbyte)value!),
-                SerializedType.Byte => buffer.Write((byte)value!),
-                SerializedType.Boolean => buffer.Write((bool)value!),
-                SerializedType.Float => buffer.Write((float)value!),
-                SerializedType.Double => buffer.Write((double)value!),
-                SerializedType.Int16 => buffer.Write((short)value!),
-                SerializedType.Int32 => buffer.Write((int)value!),
-                SerializedType.Int64 => buffer.Write((long)value!),
-                SerializedType.UInt16 => buffer.Write((ushort)value!),
-                SerializedType.UInt32 => buffer.Write((uint)value!),
-                SerializedType.UInt64 => buffer.Write((ulong)value!),
-                SerializedType.Char => buffer.Write((char)value!),
-                SerializedType.String => buffer.Write((string)value!, encoding),
-                SerializedType.DateTime => buffer.Write((DateTime)value!),
-                SerializedType.Enum => buffer.Write((Enum)value!),
-                SerializedType.Guid => buffer.Write((Guid)value!),
-                SerializedType.Object => BaseSerialize(value!.GetType(), value, buffer, encoding),
-                // ARRAY TYPES
-                SerializedType.SByteArray => buffer.WriteArray((sbyte[])value!),
-                SerializedType.ByteArray => buffer.WriteArray((byte[])value!),
-                SerializedType.BooleanArray => buffer.WriteArray((bool[])value!),
-                SerializedType.FloatArray => buffer.WriteArray((float[])value!),
-                SerializedType.DoubleArray => buffer.WriteArray((double[])value!),
-                SerializedType.Int16Array => buffer.WriteArray((short[])value!),
-                SerializedType.Int32Array => buffer.WriteArray((int[])value!),
-                SerializedType.Int64Array => buffer.WriteArray((long[])value!),
-                SerializedType.UInt16Array => buffer.WriteArray((ushort[])value!),
-                SerializedType.UInt32Array => buffer.WriteArray((uint[])value!),
-                SerializedType.UInt64Array => buffer.WriteArray((ulong[])value!),
-                SerializedType.CharArray => buffer.WriteArray((char[])value!),
-                SerializedType.StringArray => buffer.WriteArray(encoding, (string[])value!),
-                SerializedType.DateTimeArray => buffer.WriteArray((DateTime[])value!),
-                SerializedType.EnumArray => buffer.WriteArray(Helper.ToEnumArray(value!)),
-                SerializedType.GuidArray => buffer.WriteArray((Guid[])value!),
-                SerializedType.ObjectArray => WriteObjectArray(value!, buffer, encoding),
-                _ => false,
+                nameof(SByte) => Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.Write), null, binbuf, property),
+                nameof(Byte) => Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.Write), null, binbuf, property),
+                nameof(Single) => Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.Write), null, binbuf, property),
+                nameof(Double) => Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.Write), null, binbuf, property),
+                nameof(Boolean) => Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.Write), null, binbuf, property),
+                nameof(Int16) => Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.Write), null, binbuf, property),
+                nameof(UInt16) => Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.Write), null, binbuf, property),
+                nameof(Int32) => Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.Write), null, binbuf, property),
+                nameof(UInt32) => Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.Write), null, binbuf, property),
+                nameof(Int64) => Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.Write), null, binbuf, property),
+                nameof(UInt64) => Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.Write), null, binbuf, property),
+                nameof(Char) => Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.Write), null, binbuf, property),
+                nameof(String) => Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.Write), null, binbuf, property, encoding),
+                nameof(DateTime) => Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.Write), null, binbuf, property),
+                nameof(Guid) => Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.Write), null, binbuf, property),
+                _ => throw new NotImplementedException(),
             };
-            if (!result)
-                return false;
+            return (isNotNull, result);
         }
-
-        return true;
-    }
-
-    private static bool ReadPropertiesValueFromBuffer(List<(string name, SerializedType type, PropertyInfo pi)> props, ref object obj, BinaryBuffer buffer, Encoding encoding)
-    {
-        foreach (var (name, type, pi) in props)
+        else
         {
-            var flag = buffer.ReadEnum<SerializeFlags>();
-            if (flag.HasFlag(SerializeFlags.NullValue))
-            {
-                pi.SetValue(obj, null);
-                continue;
-            }
-
-            pi.SetValue(obj,
-                // BASE TYPES
-                type == SerializedType.Boolean ? buffer.ReadBoolean() :
-                type == SerializedType.SByte ? buffer.ReadSByte() :
-                type == SerializedType.Byte ? buffer.ReadByte() :
-                type == SerializedType.Int16 ? buffer.ReadInt16() :
-                type == SerializedType.Int32 ? buffer.ReadInt32() :
-                type == SerializedType.Int64 ? buffer.ReadInt64() :
-                type == SerializedType.UInt16 ? buffer.ReadUInt16() :
-                type == SerializedType.UInt32 ? buffer.ReadUInt32() :
-                type == SerializedType.UInt64 ? buffer.ReadUInt64() :
-                type == SerializedType.Char ? buffer.ReadChar() :
-                type == SerializedType.String ? buffer.ReadString(encoding) :
-                type == SerializedType.Float ? buffer.ReadSingle() :
-                type == SerializedType.Double ? buffer.ReadDouble() :
-                type == SerializedType.DateTime ? buffer.ReadDateTime() :
-                type == SerializedType.Enum ? buffer.ReadEnum(pi.PropertyType) :
-                type == SerializedType.Guid ? buffer.ReadGuid() :
-                type == SerializedType.Object ? BaseDeserialize(pi.PropertyType, buffer, encoding) :
-                // ARRAY TYPES
-                type == SerializedType.BooleanArray ? buffer.ReadBooleanArray() :
-                type == SerializedType.SByteArray ? buffer.ReadSByteArray() :
-                type == SerializedType.ByteArray ? buffer.ReadByteArray() :
-                type == SerializedType.Int16Array ? buffer.ReadInt16Array() :
-                type == SerializedType.Int32Array ? buffer.ReadInt32Array() :
-                type == SerializedType.Int64Array ? buffer.ReadInt64Array() :
-                type == SerializedType.UInt16Array ? buffer.ReadUInt16Array() :
-                type == SerializedType.UInt32Array ? buffer.ReadUInt32Array() :
-                type == SerializedType.UInt64Array ? buffer.ReadUInt64Array() :
-                type == SerializedType.CharArray ? buffer.ReadCharArray() :
-                type == SerializedType.StringArray ? buffer.ReadStringArray(encoding) :
-                type == SerializedType.FloatArray ? buffer.ReadSingleArray() :
-                type == SerializedType.DoubleArray ? buffer.ReadDoubleArray() :
-                type == SerializedType.DateTimeArray ? buffer.ReadDateTimeArray() :
-                type == SerializedType.EnumArray ? Helper.FromEnumArray(buffer.ReadEnumArray(pi.PropertyType.GetElementType()!), pi!.PropertyType.GetElementType()!) :
-                type == SerializedType.GuidArray ? buffer.ReadGuidArray() :
-                type == SerializedType.ObjectArray ? ReadObjectArray(pi.PropertyType, buffer, encoding) :
-                null);
+            var arrType = propType.GetElementType();
+            throw new NotImplementedException();
         }
-
-        return true;
-    }
-
-    private static bool WriteObjectArray(object value, BinaryBuffer buffer, Encoding encoding)
-    {
-        var type = value.GetType();
-        if(type.GetElementType() == typeof(object))
-            return false;
-        var arr = (value as Array)!;
-        buffer.Write(arr.Length);
-
-        foreach (var item in arr)
-        {
-            if(!BaseSerialize(item.GetType(), item, buffer, encoding))
-            {
-                throw new Exception();
-            }
-        }
-        return true;
-    }
-
-    private static object? ReadObjectArray(Type type, BinaryBuffer buffer, Encoding encoding)
-    {
-        var size = buffer.ReadUInt32();
-
-        if(size == 0)
-        {
-            return Array.Empty<object>();
-        }
-
-        var et = type.GetElementType()!;
-
-        Array arr = Array.CreateInstance(et, size);
-
-        for (int i = 0; i < size; i++)
-        {
-            var item = BaseDeserialize(et, buffer, encoding);
-            arr.SetValue(item, i);    
-        }
-        return arr;
     }
 }
