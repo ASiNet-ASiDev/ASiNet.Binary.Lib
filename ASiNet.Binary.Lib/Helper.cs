@@ -15,7 +15,9 @@ public static class Helper
 
     public static Enum ToEnum<TType>(TType x, Type type) where TType : struct
     {
-        return (Enum)Enum.Parse(type, x.ToString()!);
+        var result = Activator.CreateInstance(type);
+        result = x;
+        return (Enum)result;
     }
 
 

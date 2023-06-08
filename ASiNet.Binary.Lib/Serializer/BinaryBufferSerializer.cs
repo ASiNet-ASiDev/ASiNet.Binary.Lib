@@ -26,30 +26,16 @@ public static class BinaryBufferSerializer
     /// <returns><see cref="true"/> если запись прошла успешна, иначе <see cref="false"/></returns>
     public static bool Serialize<T>(in T obj, BinaryBuffer buffer, Encoding? encoding = null)
     {
-        try
-        {
-            encoding ??= Encoding.UTF8;
+        encoding ??= Encoding.UTF8;
 
-            return BaseSerialize(typeof(T), obj!, buffer, encoding);
-        }
-        catch
-        {
-            throw;
-        }
+        return BaseSerialize(typeof(T), obj!, buffer, encoding);
     }
 
     public static bool Serialize(Type type, in object obj, BinaryBuffer buffer, Encoding? encoding = null)
     {
-        try
-        {
-            encoding ??= Encoding.UTF8;
+        encoding ??= Encoding.UTF8;
 
-            return BaseSerialize(type, obj, buffer, encoding);
-        }
-        catch
-        {
-            throw;
-        }
+        return BaseSerialize(type, obj, buffer, encoding);
     }
     /// <summary>
     /// Читает обьект из <see cref="BinaryBuffer"/>, незаполняет проигнорированные поля, заменяет <see cref="null"/> на значение по умолчанию. 
@@ -59,30 +45,16 @@ public static class BinaryBufferSerializer
     /// <returns>Обьект если операция прошла успешно, иначе <see cref="null"/></returns>
     public static T? Deserialize<T>(BinaryBuffer buffer, Encoding? encoding = null) where T : new()
     {
-        try
-        {
-            encoding ??= Encoding.UTF8;
+        encoding ??= Encoding.UTF8;
 
-            return (T?)BaseDeserialize(typeof(T), buffer, encoding);
-        }
-        catch
-        {
-            throw;
-        }
+        return (T?)BaseDeserialize(typeof(T), buffer, encoding);
     }
 
     public static object? Deserialize(Type type, BinaryBuffer buffer, Encoding? encoding = null)
     {
-        try
-        {
-            encoding ??= Encoding.UTF8;
+        encoding ??= Encoding.UTF8;
 
-            return BaseDeserialize(type, buffer, encoding);
-        }
-        catch
-        {
-            throw;
-        }
+        return BaseDeserialize(type, buffer, encoding);
     }
 
     private static bool BaseSerialize(Type type, in object obj, BinaryBuffer buffer, Encoding encoding)
@@ -176,26 +148,38 @@ public static class BinaryBufferSerializer
         {
             var isNotNull = Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.ReadBoolean), null, binbuf);
 
-            var (result, defaultValue) = propType.Name switch
+            if(propType.IsEnum)
             {
-                nameof (SByte) => (Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.ReadSByte), null, binbuf), Expression.Constant(default(sbyte))),
-                nameof (Byte) => (Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.ReadByte), null, binbuf), Expression.Constant(default(byte))),
-                nameof (Single) => (Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.ReadSingle), null, binbuf), Expression.Constant(default(float))),
-                nameof (Double) => (Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.ReadDouble), null, binbuf), Expression.Constant(default(double))),
-                nameof (Boolean) => (Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.ReadBoolean), null, binbuf), Expression.Constant(default(bool))),
-                nameof (Int16) => (Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.ReadInt16), null, binbuf), Expression.Constant(default(short))),
-                nameof (UInt16) => (Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.ReadUInt16), null, binbuf), Expression.Constant(default(ushort))),
-                nameof (Int32) => (Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.ReadInt32), null, binbuf), Expression.Constant(default(int))),
-                nameof (UInt32) => (Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.ReadUInt32), null, binbuf), Expression.Constant(default(uint))),
-                nameof (Int64) => (Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.ReadInt64), null, binbuf), Expression.Constant(default(long))),
-                nameof (UInt64) => (Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.ReadUInt64), null, binbuf), Expression.Constant(default(ulong))),
-                nameof (Char) => (Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.ReadChar), null, binbuf), Expression.Constant(default(char))),
-                nameof (String) => (Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.ReadString), null, binbuf, encoding), Expression.Constant(default(string), typeof(string))),
-                nameof (DateTime) => (Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.ReadDateTime), null, binbuf), Expression.Constant(default(DateTime))),
-                nameof (Guid) => (Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.ReadGuid), null, binbuf), Expression.Constant(default(Guid))),
-                _ => throw new NotImplementedException(),  
-            };
-            return (isNotNull, result, defaultValue);
+                var mi = typeof(BinaryBufferBaseTypes).GetMethod(nameof(BinaryBufferBaseTypes.ReadEnum))!.MakeGenericMethod(propType);
+
+                var enumReader = Expression.Call(mi, binbuf);
+                var def = Expression.Constant(Activator.CreateInstance(propType));
+                //var enumResult = Expression.TypeAs(enumReader, propType);
+                return (isNotNull, enumReader, def);
+            }
+            else
+            {
+                var (result, defaultValue) = propType.Name switch
+                {
+                    nameof(SByte) => (Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.ReadSByte), null, binbuf), Expression.Constant(default(sbyte))),
+                    nameof(Byte) => (Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.ReadByte), null, binbuf), Expression.Constant(default(byte))),
+                    nameof(Single) => (Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.ReadSingle), null, binbuf), Expression.Constant(default(float))),
+                    nameof(Double) => (Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.ReadDouble), null, binbuf), Expression.Constant(default(double))),
+                    nameof(Boolean) => (Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.ReadBoolean), null, binbuf), Expression.Constant(default(bool))),
+                    nameof(Int16) => (Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.ReadInt16), null, binbuf), Expression.Constant(default(short))),
+                    nameof(UInt16) => (Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.ReadUInt16), null, binbuf), Expression.Constant(default(ushort))),
+                    nameof(Int32) => (Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.ReadInt32), null, binbuf), Expression.Constant(default(int))),
+                    nameof(UInt32) => (Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.ReadUInt32), null, binbuf), Expression.Constant(default(uint))),
+                    nameof(Int64) => (Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.ReadInt64), null, binbuf), Expression.Constant(default(long))),
+                    nameof(UInt64) => (Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.ReadUInt64), null, binbuf), Expression.Constant(default(ulong))),
+                    nameof(Char) => (Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.ReadChar), null, binbuf), Expression.Constant(default(char))),
+                    nameof(String) => (Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.ReadString), null, binbuf, encoding), Expression.Constant(default(string), typeof(string))),
+                    nameof(DateTime) => (Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.ReadDateTime), null, binbuf), Expression.Constant(default(DateTime))),
+                    nameof(Guid) => (Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.ReadGuid), null, binbuf), Expression.Constant(default(Guid))),
+                    _ => throw new NotImplementedException(),
+                };
+                return (isNotNull, result, defaultValue);
+            }
         }
         else
         {
@@ -270,27 +254,34 @@ public static class BinaryBufferSerializer
         if (!propType.IsArray)
         {
             var isNotNull = Expression.TypeIs(property, property.Type);
-
-            var result = propType.Name switch
+            if (propType.IsEnum)
             {
-                nameof(SByte) => Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.Write), null, binbuf, property),
-                nameof(Byte) => Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.Write), null, binbuf, property),
-                nameof(Single) => Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.Write), null, binbuf, property),
-                nameof(Double) => Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.Write), null, binbuf, property),
-                nameof(Boolean) => Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.Write), null, binbuf, property),
-                nameof(Int16) => Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.Write), null, binbuf, property),
-                nameof(UInt16) => Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.Write), null, binbuf, property),
-                nameof(Int32) => Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.Write), null, binbuf, property),
-                nameof(UInt32) => Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.Write), null, binbuf, property),
-                nameof(Int64) => Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.Write), null, binbuf, property),
-                nameof(UInt64) => Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.Write), null, binbuf, property),
-                nameof(Char) => Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.Write), null, binbuf, property),
-                nameof(String) => Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.Write), null, binbuf, property, encoding),
-                nameof(DateTime) => Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.Write), null, binbuf, property),
-                nameof(Guid) => Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.Write), null, binbuf, property),
-                _ => throw new NotImplementedException(),
-            };
-            return (isNotNull, result);
+                var enumWriter = Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.Write), null, binbuf, Expression.TypeAs(property, typeof(Enum)));
+                return (isNotNull, enumWriter);
+            }
+            else
+            {
+                var result = propType.Name switch
+                {
+                    nameof(SByte) => Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.Write), null, binbuf, property),
+                    nameof(Byte) => Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.Write), null, binbuf, property),
+                    nameof(Single) => Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.Write), null, binbuf, property),
+                    nameof(Double) => Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.Write), null, binbuf, property),
+                    nameof(Boolean) => Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.Write), null, binbuf, property),
+                    nameof(Int16) => Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.Write), null, binbuf, property),
+                    nameof(UInt16) => Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.Write), null, binbuf, property),
+                    nameof(Int32) => Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.Write), null, binbuf, property),
+                    nameof(UInt32) => Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.Write), null, binbuf, property),
+                    nameof(Int64) => Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.Write), null, binbuf, property),
+                    nameof(UInt64) => Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.Write), null, binbuf, property),
+                    nameof(Char) => Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.Write), null, binbuf, property),
+                    nameof(String) => Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.Write), null, binbuf, property, encoding),
+                    nameof(DateTime) => Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.Write), null, binbuf, property),
+                    nameof(Guid) => Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.Write), null, binbuf, property),
+                    _ => throw new NotImplementedException(),
+                };
+                return (isNotNull, result);
+            }
         }
         else
         {

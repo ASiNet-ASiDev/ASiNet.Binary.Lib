@@ -299,38 +299,38 @@ public static class BinaryBufferBaseTypes
         throw new NotSupportedException();
     }
 
-    public static Enum ReadEnum(this ref BinaryBuffer self, Type enumType)
-    {
-        if (!enumType.IsEnum)
-            throw new Exception("Type not enum!");
-        var etype = enumType.GetEnumUnderlyingType();
+    //public static Enum ReadEnum(this ref BinaryBuffer self, Type enumType)
+    //{
+    //    if (!enumType.IsEnum)
+    //        throw new Exception("Type not enum!");
+    //    var etype = enumType.GetEnumUnderlyingType();
 
-        if (etype == typeof(int))
-            return Helper.ToEnum(ReadInt32(self), enumType);
+    //    if (etype == typeof(int))
+    //        return Helper.ToEnum(ReadInt32(self), enumType);
 
-        if (etype == typeof(byte))
-            return Helper.ToEnum(ReadByte(self), enumType);
+    //    if (etype == typeof(byte))
+    //        return Helper.ToEnum(ReadByte(self), enumType);
 
-        if (etype == typeof(short))
-            return Helper.ToEnum(ReadInt16(self), enumType);
+    //    if (etype == typeof(short))
+    //        return Helper.ToEnum(ReadInt16(self), enumType);
 
-        if (etype == typeof(long))
-            return Helper.ToEnum(ReadInt64(self), enumType);        
+    //    if (etype == typeof(long))
+    //        return Helper.ToEnum(ReadInt64(self), enumType);        
         
-        if (etype == typeof(ushort))
-            return Helper.ToEnum(ReadUInt16(self), enumType);
+    //    if (etype == typeof(ushort))
+    //        return Helper.ToEnum(ReadUInt16(self), enumType);
         
-        if (etype == typeof(uint))
-            return Helper.ToEnum(ReadUInt32(self), enumType);
+    //    if (etype == typeof(uint))
+    //        return Helper.ToEnum(ReadUInt32(self), enumType);
         
-        if (etype == typeof(ulong))
-            return Helper.ToEnum(ReadUInt64(self), enumType);
+    //    if (etype == typeof(ulong))
+    //        return Helper.ToEnum(ReadUInt64(self), enumType);
 
-        if (etype == typeof(sbyte))
-            return Helper.ToEnum(ReadSByte(self), enumType);
+    //    if (etype == typeof(sbyte))
+    //        return Helper.ToEnum(ReadSByte(self), enumType);
 
-        throw new NotSupportedException();
-    }
+    //    throw new NotSupportedException();
+    //}
 
     #endregion
 }

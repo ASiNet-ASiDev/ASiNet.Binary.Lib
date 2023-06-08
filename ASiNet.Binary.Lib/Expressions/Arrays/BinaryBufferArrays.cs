@@ -328,17 +328,17 @@ public static class BinaryBufferArrays
         return array;
     }
 
-    public static Enum[] ReadEnumArray(this ref BinaryBuffer buffer, Type enumType)
-    {
-        var length = buffer.ReadInt32();
-        var array = new Enum[length];
-        for (int i = 0; i < length; i++)
-        {
-            array[i] = buffer.ReadEnum(enumType);
-        }
+    //public static Enum[] ReadEnumArray(this ref BinaryBuffer buffer, Type enumType)
+    //{
+    //    var length = buffer.ReadInt32();
+    //    var array = new Enum[length];
+    //    for (int i = 0; i < length; i++)
+    //    {
+    //        array[i] = buffer.ReadEnum(enumType);
+    //    }
 
-        return array;
-    }
+    //    return array;
+    //}
 
     public static Guid[] ReadGuidArray(this ref BinaryBuffer buffer)
     {

@@ -8,12 +8,12 @@ using System;
 using System.Reflection.Metadata;
 using System.Runtime.Serialization.Formatters.Binary;
 using System.Text.Json;
-using System.Xml.Serialization;
+//using System.Xml.Serialization;
 
-BenchmarkRunner.Run<BinaryBufferSerializerTest>();
+//BenchmarkRunner.Run<BinaryBufferSerializerTest>();
 
-//var bb = new BinaryBufferSerializerTest();
-//bb.BinaryBufferSerializer_SerializerTest();
+var bb = new BinaryBufferSerializerTest();
+bb.BinaryBufferSerializer_SerializerTest();
 
 Console.ReadLine();
 
@@ -31,6 +31,8 @@ public class BinaryBufferSerializerTest
 
 
         var result = BinaryBufferSerializer.Serialize(_obj, bb);
+
+        _obj.En = SerializedType.None;
 
         _obj = BinaryBufferSerializer.Deserialize<A>(bb)!;
 
@@ -109,8 +111,8 @@ public class A
     public DateTime Dt { get; set; } = DateTime.UtcNow;
     [ProtoMember(14)]
     public Guid G { get; set; } = Guid.NewGuid();
-    //[ProtoMember(15)]
-    //public SerializedType En { get; set; } = SerializedType.Byte;
+    [ProtoMember(15)]
+    public SerializedType En { get; set; } = SerializedType.Byte;
     //[ProtoMember(16)]
     //public Arrays Arr { get; set; } = new();
     //[ProtoMember(17)]
