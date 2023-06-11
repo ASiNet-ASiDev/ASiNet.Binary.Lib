@@ -19,7 +19,8 @@ namespace ASiNet.Binary.Lib.Serializer.Tests
             {
                 F1 = 13.5f, F2 = 33.6555D,
                 C = 55, C1 = 556, C2 = 13, C3 = 556, 
-                D = 99, D1 = 5563, D2 = 13, D3 = 522,
+                D = 99, D1 = 5563, D2 = 13, D3 = 522, 
+                C_Null = null, D_Null = 1,
                 Str = "Hello", Ch = 'A',
                 Dt = DateTime.Now,
                 G = Guid.NewGuid(),
@@ -35,7 +36,7 @@ namespace ASiNet.Binary.Lib.Serializer.Tests
             var dresult = BinaryBufferSerializer.Deserialize<A>(buffer);
 
             Assert.IsNotNull(dresult);
-            Assert.AreEqual(raw, dresult);
+            Assert.AreEqual(JsonSerializer.Serialize(raw), JsonSerializer.Serialize(dresult));
         }
 
         [TestMethod()]
@@ -118,103 +119,7 @@ namespace ASiNet.Binary.Lib.Serializer.Tests
         {
             var raw = new O()
             {
-                Arr = new R[] 
-                {
-                    new R()
-                    {
-                        Id = 1,
-                        FirstName = "Игорь",
-                        LastName = "укрпурп",
-                        RefU = new R()
-                        {
-                            Id = 2,
-                            FirstName = "Укроп",
-                            LastName = "36663",
-                            RefU = new R()
-                            {
-                                Id = 3,
-                                FirstName = "Хмурый",
-                                LastName = "ва888",
-                                RefU = new R()
-                                {
-                                    Id = 4,
-                                    FirstName = "Весельчак",
-                                    LastName = "B16",
-                                    RefU = null,
-                                }
-                            }
-                        }
-                    },
-                    new R()
-                    {
-                        Id = 1,
-                        FirstName = "Игорь",
-                        LastName = "укрпурп",
-                        RefU = new R()
-                        {
-                            Id = 2,
-                            FirstName = "Укроп",
-                            LastName = "36663",
-                            RefU = new R()
-                            {
-                                Id = 3,
-                                FirstName = "Хмурый",
-                                LastName = "ва888",
-                                RefU = new R()
-                                {
-                                    Id = 4,
-                                    FirstName = "Весельчак",
-                                    LastName = "B16",
-                                    RefU = null,
-                                }
-                            }
-                        }
-                    },
-                    new R()
-                    {
-                        Id = 1,
-                        FirstName = "Игорь",
-                        LastName = "укрпурп",
-                        RefU = new R()
-                        {
-                            Id = 2,
-                            FirstName = "Укроп",
-                            LastName = "36663",
-                            RefU = new R()
-                            {
-                                Id = 3,
-                                FirstName = "Хмурый",
-                                LastName = "ва888",
-                                RefU = new R()
-                                {
-                                    Id = 4,
-                                    FirstName = "Весельчак",
-                                    LastName = "B16",
-                                    RefU = null,
-                                }
-                            }
-                        }
-                    }
-                }
-            };
-            var r = 0;
-            var w = 0;
-            var buffer = new BinaryBuffer(new byte[ushort.MaxValue], new byte[sizeof(decimal)], ref w, ref r);
 
-            if (!BinaryBufferSerializer.Serialize(raw, buffer))
-                Assert.Fail();
-
-            var dresult = BinaryBufferSerializer.Deserialize<O>(buffer);
-
-            Assert.IsNotNull(dresult);
-            Assert.AreEqual(JsonSerializer.Serialize(raw), JsonSerializer.Serialize(dresult));
-        }
-
-        [TestMethod()]
-        public void SerializeRecursiveObjectArraysTest()
-        {
-            var raw = new O()
-            {
                 Arr = new R[]
                 {
                     new()
@@ -240,6 +145,105 @@ namespace ASiNet.Binary.Lib.Serializer.Tests
                     }
                 }
             };
+           
+            var r = 0;
+            var w = 0;
+            var arr = new byte[ushort.MaxValue];
+            var buffer = new BinaryBuffer(arr, new byte[sizeof(decimal)], ref w, ref r);
+
+            if (!BinaryBufferSerializer.Serialize(raw, buffer))
+                Assert.Fail();
+
+            var dresult = BinaryBufferSerializer.Deserialize<O>(buffer);
+
+            Assert.IsNotNull(dresult);
+            Assert.AreEqual(JsonSerializer.Serialize(raw), JsonSerializer.Serialize(dresult));
+        }
+
+        [TestMethod()]
+        public void SerializeRecursiveObjectArraysTest()
+        {
+            var raw = new O()
+            {
+                Arr = new R[]
+                {
+                    new R()
+                    {
+                        Id = 1,
+                        FirstName = "Игорь",
+                        LastName = "укрпурп",
+                        RefU = new R()
+                        {
+                            Id = 2,
+                            FirstName = "Укроп",
+                            LastName = "36663",
+                            RefU = new R()
+                            {
+                                Id = 3,
+                                FirstName = "Хмурый",
+                                LastName = "ва888",
+                                RefU = new R()
+                                {
+                                    Id = 4,
+                                    FirstName = "Весельчак",
+                                    LastName = "B16",
+                                    RefU = null,
+                                }
+                            }
+                        }
+                    },
+                    new R()
+                    {
+                        Id = 1,
+                        FirstName = "Игорь",
+                        LastName = "укрпурп",
+                        RefU = new R()
+                        {
+                            Id = 2,
+                            FirstName = "Укроп",
+                            LastName = "36663",
+                            RefU = new R()
+                            {
+                                Id = 3,
+                                FirstName = "Хмурый",
+                                LastName = "ва888",
+                                RefU = new R()
+                                {
+                                    Id = 4,
+                                    FirstName = "Весельчак",
+                                    LastName = "B16",
+                                    RefU = null,
+                                }
+                            }
+                        }
+                    },
+                    new R()
+                    {
+                        Id = 1,
+                        FirstName = "Игорь",
+                        LastName = "укрпурп",
+                        RefU = new R()
+                        {
+                            Id = 2,
+                            FirstName = "Укроп",
+                            LastName = "36663",
+                            RefU = new R()
+                            {
+                                Id = 3,
+                                FirstName = "Хмурый",
+                                LastName = "ва888",
+                                RefU = new R()
+                                {
+                                    Id = 4,
+                                    FirstName = "Весельчак",
+                                    LastName = "B16",
+                                    RefU = null,
+                                }
+                            }
+                        }
+                    }
+                }
+            };
             var r = 0;
             var w = 0;
             var buffer = new BinaryBuffer(new byte[ushort.MaxValue], new byte[sizeof(decimal)], ref w, ref r);
@@ -259,6 +263,9 @@ struct A
 {
     public int C { get; set; }
     public short D { get; set; }
+
+    public int? C_Null { get; set; }
+    public short? D_Null { get; set; }
 
     public uint C1 { get; set; }
     public ushort D1 { get; set; }
@@ -282,7 +289,7 @@ struct A
     public SerializedType En { get; set; }
 }
 
-struct B
+class B
 {
     public int[] C { get; set; }
     public short[] D { get; set; }

@@ -10,7 +10,7 @@ public static class BinaryBufferArrays
 {
     #region write
 
-    public static bool WriteArray(this ref BinaryBuffer buffer, params bool[] array)
+    public static bool WriteArray(this BinaryBuffer buffer, params bool[] array)
     {
         buffer.Write(array.Length);
         foreach (var item in array)
@@ -20,7 +20,7 @@ public static class BinaryBufferArrays
         return true;
     }
 
-    public static bool WriteArray(this ref BinaryBuffer buffer, params byte[] array)
+    public static bool WriteArray(this BinaryBuffer buffer, params byte[] array)
     {
         buffer.Write(array.Length);
         foreach (var item in array)
@@ -30,7 +30,7 @@ public static class BinaryBufferArrays
         return true;
     }
 
-    public static bool WriteArray(this ref BinaryBuffer buffer, params sbyte[] array)
+    public static bool WriteArray(this BinaryBuffer buffer, params sbyte[] array)
     {
         buffer.Write(array.Length);
         foreach (var item in array)
@@ -40,7 +40,7 @@ public static class BinaryBufferArrays
         return true;
     }
 
-    public static bool WriteArray(this ref BinaryBuffer buffer, params short[] array)
+    public static bool WriteArray(this BinaryBuffer buffer, params short[] array)
     {
         buffer.Write(array.Length);
         foreach (var item in array)
@@ -50,7 +50,7 @@ public static class BinaryBufferArrays
         return true;
     }
 
-    public static bool WriteArray(this ref BinaryBuffer buffer, params ushort[] array)
+    public static bool WriteArray(this BinaryBuffer buffer, params ushort[] array)
     {
         buffer.Write(array.Length);
         foreach (var item in array)
@@ -60,7 +60,7 @@ public static class BinaryBufferArrays
         return true;
     }
 
-    public static bool WriteArray(this ref BinaryBuffer buffer, params int[] array)
+    public static bool WriteArray(this BinaryBuffer buffer, params int[] array)
     {
         buffer.Write(array.Length);
         foreach (var item in array)
@@ -70,7 +70,7 @@ public static class BinaryBufferArrays
         return true;
     }
 
-    public static bool WriteArray(this ref BinaryBuffer buffer, params uint[] array)
+    public static bool WriteArray(this BinaryBuffer buffer, params uint[] array)
     {
         buffer.Write(array.Length);
         foreach (var item in array)
@@ -80,7 +80,7 @@ public static class BinaryBufferArrays
         return true;
     }
 
-    public static bool WriteArray(this ref BinaryBuffer buffer, params long[] array)
+    public static bool WriteArray(this BinaryBuffer buffer, params long[] array)
     {
         buffer.Write(array.Length);
         foreach (var item in array)
@@ -90,7 +90,7 @@ public static class BinaryBufferArrays
         return true;
     }
 
-    public static bool WriteArray(this ref BinaryBuffer buffer, params ulong[] array)
+    public static bool WriteArray(this BinaryBuffer buffer, params ulong[] array)
     {
         buffer.Write(array.Length);
         foreach (var item in array)
@@ -100,7 +100,7 @@ public static class BinaryBufferArrays
         return true;
     }
 
-    public static bool WriteArray(this ref BinaryBuffer buffer, params float[] array)
+    public static bool WriteArray(this BinaryBuffer buffer, params float[] array)
     {
         buffer.Write(array.Length);
         foreach (var item in array)
@@ -110,7 +110,7 @@ public static class BinaryBufferArrays
         return true;
     }
 
-    public static bool WriteArray(this ref BinaryBuffer buffer, params double[] array)
+    public static bool WriteArray(this BinaryBuffer buffer, params double[] array)
     {
         buffer.Write(array.Length);
         foreach (var item in array)
@@ -120,7 +120,7 @@ public static class BinaryBufferArrays
         return true;
     }
 
-    public static bool WriteArray(this ref BinaryBuffer buffer, params char[] array)
+    public static bool WriteArray(this BinaryBuffer buffer, params char[] array)
     {
         buffer.Write(array.Length);
         foreach (var item in array)
@@ -130,7 +130,7 @@ public static class BinaryBufferArrays
         return true;
     }
 
-    public static bool WriteArray(this ref BinaryBuffer buffer, params Enum[] array)
+    public static bool WriteArray(this BinaryBuffer buffer, params Enum[] array)
     {
         buffer.Write(array.Length);
         foreach (var item in array)
@@ -140,7 +140,17 @@ public static class BinaryBufferArrays
         return true;
     }
 
-    public static bool WriteArray(this ref BinaryBuffer buffer, params DateTime[] array)
+    public static bool WriteEnumArray<T>(this BinaryBuffer buffer, params T[] array) where T : Enum
+    {
+        buffer.Write(array.Length);
+        for (int i = 0; i < array.Length; i++)
+        {
+            buffer.Write(array[i]);
+        }
+        return true;
+    }
+
+    public static bool WriteArray(this BinaryBuffer buffer, params DateTime[] array)
     {
         buffer.Write(array.Length);
         foreach (var item in array)
@@ -150,7 +160,7 @@ public static class BinaryBufferArrays
         return true;
     }
 
-    public static bool WriteArray(this ref BinaryBuffer buffer, params Guid[] array)
+    public static bool WriteArray(this BinaryBuffer buffer, params Guid[] array)
     {
         buffer.Write(array.Length);
         foreach (var item in array)
@@ -160,7 +170,7 @@ public static class BinaryBufferArrays
         return true;
     }
 
-    public static bool WriteArray(this ref BinaryBuffer buffer, Encoding encoding, params string[] array)
+    public static bool WriteArray(this BinaryBuffer buffer, Encoding encoding, params string[] array)
     {
         buffer.Write(array.Length);
         foreach (var item in array)
@@ -172,7 +182,7 @@ public static class BinaryBufferArrays
 
     #endregion
     #region read
-    public static bool[] ReadBooleanArray(this ref BinaryBuffer buffer)
+    public static bool[] ReadBooleanArray(this BinaryBuffer buffer)
     {
         var length = buffer.ReadInt32();
         var array = new bool[length];
@@ -184,7 +194,7 @@ public static class BinaryBufferArrays
         return array;
     }
 
-    public static byte[] ReadByteArray(this ref BinaryBuffer buffer)
+    public static byte[] ReadByteArray(this BinaryBuffer buffer)
     {
         var length = buffer.ReadInt32();
         var array = new byte[length];
@@ -196,7 +206,7 @@ public static class BinaryBufferArrays
         return array;
     }
 
-    public static sbyte[] ReadSByteArray(this ref BinaryBuffer buffer)
+    public static sbyte[] ReadSByteArray(this BinaryBuffer buffer)
     {
         var length = buffer.ReadInt32();
         var array = new sbyte[length];
@@ -208,7 +218,7 @@ public static class BinaryBufferArrays
         return array;
     }
 
-    public static short[] ReadInt16Array(this ref BinaryBuffer buffer)
+    public static short[] ReadInt16Array(this BinaryBuffer buffer)
     {
         var length = buffer.ReadInt32();
         var array = new short[length];
@@ -220,7 +230,7 @@ public static class BinaryBufferArrays
         return array;
     }
 
-    public static ushort[] ReadUInt16Array(this ref BinaryBuffer buffer)
+    public static ushort[] ReadUInt16Array(this BinaryBuffer buffer)
     {
         var length = buffer.ReadInt32();
         var array = new ushort[length];
@@ -232,7 +242,7 @@ public static class BinaryBufferArrays
         return array;
     }
 
-    public static int[] ReadInt32Array(this ref BinaryBuffer buffer)
+    public static int[] ReadInt32Array(this BinaryBuffer buffer)
     {
         var length = buffer.ReadInt32();
         var array = new int[length];
@@ -244,7 +254,7 @@ public static class BinaryBufferArrays
         return array;
     }
 
-    public static uint[] ReadUInt32Array(this ref BinaryBuffer buffer)
+    public static uint[] ReadUInt32Array(this BinaryBuffer buffer)
     {
         var length = buffer.ReadInt32();
         var array = new uint[length];
@@ -256,7 +266,7 @@ public static class BinaryBufferArrays
         return array;
     }
 
-    public static long[] ReadInt64Array(this ref BinaryBuffer buffer)
+    public static long[] ReadInt64Array(this BinaryBuffer buffer)
     {
         var length = buffer.ReadInt32();
         var array = new long[length];
@@ -268,7 +278,7 @@ public static class BinaryBufferArrays
         return array;
     }
 
-    public static ulong[] ReadUInt64Array(this ref BinaryBuffer buffer)
+    public static ulong[] ReadUInt64Array(this BinaryBuffer buffer)
     {
         var length = buffer.ReadInt32();
         var array = new ulong[length];
@@ -280,7 +290,7 @@ public static class BinaryBufferArrays
         return array;
     }
 
-    public static float[] ReadSingleArray(this ref BinaryBuffer buffer)
+    public static float[] ReadSingleArray(this BinaryBuffer buffer)
     {
         var length = buffer.ReadInt32();
         var array = new float[length];
@@ -292,7 +302,7 @@ public static class BinaryBufferArrays
         return array;
     }
 
-    public static double[] ReadDoubleArray(this ref BinaryBuffer buffer)
+    public static double[] ReadDoubleArray(this BinaryBuffer buffer)
     {
         var length = buffer.ReadInt32();
         var array = new double[length];
@@ -304,7 +314,7 @@ public static class BinaryBufferArrays
         return array;
     }
 
-    public static char[] ReadCharArray(this ref BinaryBuffer buffer)
+    public static char[] ReadCharArray(this BinaryBuffer buffer)
     {
         var length = buffer.ReadInt32();
         var array = new char[length];
@@ -316,7 +326,7 @@ public static class BinaryBufferArrays
         return array;
     }
 
-    public static T[] ReadEnumArray<T>(this ref BinaryBuffer buffer) where T : struct, Enum
+    public static T[] ReadEnumArray<T>(this BinaryBuffer buffer) where T : struct, Enum
     {
         var length = buffer.ReadInt32();
         var array = new T[length];
@@ -328,19 +338,7 @@ public static class BinaryBufferArrays
         return array;
     }
 
-    //public static Enum[] ReadEnumArray(this ref BinaryBuffer buffer, Type enumType)
-    //{
-    //    var length = buffer.ReadInt32();
-    //    var array = new Enum[length];
-    //    for (int i = 0; i < length; i++)
-    //    {
-    //        array[i] = buffer.ReadEnum(enumType);
-    //    }
-
-    //    return array;
-    //}
-
-    public static Guid[] ReadGuidArray(this ref BinaryBuffer buffer)
+    public static Guid[] ReadGuidArray(this BinaryBuffer buffer)
     {
         var length = buffer.ReadInt32();
         var array = new Guid[length];
@@ -352,7 +350,7 @@ public static class BinaryBufferArrays
         return array;
     }
 
-    public static DateTime[] ReadDateTimeArray(this ref BinaryBuffer buffer)
+    public static DateTime[] ReadDateTimeArray(this BinaryBuffer buffer)
     {
         var length = buffer.ReadInt32();
         var array = new DateTime[length];
@@ -364,7 +362,7 @@ public static class BinaryBufferArrays
         return array;
     }
 
-    public static string[] ReadStringArray(this ref BinaryBuffer buffer, Encoding encoding)
+    public static string[] ReadStringArray(this BinaryBuffer buffer, Encoding encoding)
     {
         var length = buffer.ReadInt32();
         var array = new string[length];

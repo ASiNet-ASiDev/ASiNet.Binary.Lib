@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Expressions;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -43,5 +45,26 @@ public static class Helper
             res.SetValue(arr[i], i);
         }
         return res;
+    }
+
+    public static bool IsNullable(this Type type)
+    {
+        return Nullable.GetUnderlyingType(type) != null;
+    }
+
+    public static Expression For(Expression body, ParameterExpression i, ParameterExpression max)
+    {
+        var ret = Expression.Label(typeof(int), "ret");
+
+        var loopBody = Expression.Block(
+            Expression.IfThenElse(
+                Expression.LessThan(i, max),
+                body,
+                Expression.Break(ret, i)),
+            Expression.PostIncrementAssign(i));
+
+        var loop = Expression.Loop(loopBody, ret);
+
+        return loop;
     }
 }

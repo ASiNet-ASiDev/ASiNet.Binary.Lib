@@ -57,14 +57,14 @@ public static class BinaryBufferSerializer
         return BaseDeserialize(type, buffer, encoding);
     }
 
-    private static bool BaseSerialize(Type type, in object obj, BinaryBuffer buffer, Encoding encoding)
+    internal static bool BaseSerialize(Type type, in object obj, BinaryBuffer buffer, Encoding encoding)
     {
         var lambda = GenerateLambdaFromTypeOrGetFromBuffer(type);
         lambda.Serialize(obj, buffer, encoding);
         return true;
     }
 
-    private static object? BaseDeserialize(Type type, BinaryBuffer buffer, Encoding encoding)
+    internal static object? BaseDeserialize(Type type, BinaryBuffer buffer, Encoding encoding)
     {
         var lambda = GenerateLambdaFromTypeOrGetFromBuffer(type);
         var result = lambda.Deserialize(buffer, encoding);
@@ -76,8 +76,8 @@ public static class BinaryBufferSerializer
         if(_buffer.TryGetValue(type.Name, out var value))
             return value;
 
-        var deserialize = GenerateDeserializeLambda(type);
         var serialize = GenerateSerializeLambda(type);
+        var deserialize = GenerateDeserializeLambda(type);
 
         _buffer.TryAdd(type.Name, (deserialize, serialize));
 
@@ -93,9 +93,9 @@ public static class BinaryBufferSerializer
         var binbufParameter = Expression.Parameter(bb);
         var encodingParameter = Expression.Parameter(typeof(Encoding));
         
-        var binbufVar = Expression.Variable(bb);
-        var instVar = Expression.Variable(type);
-        var encodingVar = Expression.Variable(typeof(Encoding));
+        var binbufVar = Expression.Variable(bb, "binbuffVar");
+        var instVar = Expression.Variable(type, "instanceVar");
+        var encodingVar = Expression.Variable(typeof(Encoding), "encodingVar");
 
 
         var variables = new[] { instVar, binbufVar, encodingVar };
@@ -113,7 +113,7 @@ public static class BinaryBufferSerializer
         body.AddRange(SetProperties(type, binbufVar, instVar, encodingVar));
 
         // RETURN
-        body.Add(instVar);
+        body.Add(Expression.Convert(instVar, typeof(object)));
 
         var block = Expression.Block(variables, body);
 
@@ -135,8 +135,8 @@ public static class BinaryBufferSerializer
             var value = DeserializeToProperty(property.PropertyType, binbuf, inst, encoding);
 
             result.Add(Expression.IfThenElse(value.isNotNull,
-                Expression.Assign(Expression.Property(inst, property.Name), value.value), 
-                Expression.Assign(Expression.Property(inst, property.Name), value.defaultValue)));
+                Expression.Assign(Expression.Property(inst, property.Name), Expression.Convert(value.value, property.PropertyType)), 
+                Expression.Assign(Expression.Property(inst, property.Name), property.PropertyType.IsNullable() ? Expression.Constant(null, property.PropertyType) : value.defaultValue)));
         }
 
         return result;
@@ -144,22 +144,22 @@ public static class BinaryBufferSerializer
 
     private static (Expression isNotNull, Expression value, Expression defaultValue) DeserializeToProperty(Type propType, Expression binbuf, Expression inst, Expression encoding)
     {
+        var isNotNull = Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.ReadBoolean), null, binbuf);
         if (!propType.IsArray)
         {
-            var isNotNull = Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.ReadBoolean), null, binbuf);
-
             if(propType.IsEnum)
             {
                 var mi = typeof(BinaryBufferBaseTypes).GetMethod(nameof(BinaryBufferBaseTypes.ReadEnum))!.MakeGenericMethod(propType);
 
                 var enumReader = Expression.Call(mi, binbuf);
                 var def = Expression.Constant(Activator.CreateInstance(propType));
-                //var enumResult = Expression.TypeAs(enumReader, propType);
                 return (isNotNull, enumReader, def);
             }
             else
             {
-                var (result, defaultValue) = propType.Name switch
+                var isNulablePrimitive = Helper.IsNullable(propType) && propType.GenericTypeArguments.First().IsPrimitive;
+                var prop = isNulablePrimitive ? propType.GenericTypeArguments.First() : propType;
+                var (result, defaultValue) = prop.Name switch
                 {
                     nameof(SByte) => (Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.ReadSByte), null, binbuf), Expression.Constant(default(sbyte))),
                     nameof(Byte) => (Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.ReadByte), null, binbuf), Expression.Constant(default(byte))),
@@ -176,15 +176,45 @@ public static class BinaryBufferSerializer
                     nameof(String) => (Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.ReadString), null, binbuf, encoding), Expression.Constant(default(string), typeof(string))),
                     nameof(DateTime) => (Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.ReadDateTime), null, binbuf), Expression.Constant(default(DateTime))),
                     nameof(Guid) => (Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.ReadGuid), null, binbuf), Expression.Constant(default(Guid))),
-                    _ => throw new NotImplementedException(),
+                    _ => (Expression.Call(typeof(BinaryBufferSerializer), nameof(BaseDeserialize), null, Expression.Constant(propType), binbuf, encoding), Expression.Constant(null, propType)),
                 };
                 return (isNotNull, result, defaultValue);
             }
         }
         else
         {
-            var arrType = propType.GetElementType();
-            throw new NotImplementedException();
+            var arrType = propType.GetElementType()!;
+            if (arrType.IsEnum)
+            {
+                var mi = typeof(BinaryBufferArrays).GetMethod(nameof(BinaryBufferArrays.ReadEnumArray))!.MakeGenericMethod(arrType);
+
+                var enumReader = Expression.Call(mi, binbuf);
+                var def = Expression.Constant(Array.CreateInstance(arrType, 0));
+                return (isNotNull, enumReader, def);
+            }
+            else
+            {
+                var (result, defaultValue) = arrType.Name switch
+                {
+                    nameof(SByte) => (Expression.Call(typeof(BinaryBufferArrays), nameof(BinaryBufferArrays.ReadSByteArray), null, binbuf), Expression.Constant(Array.Empty<sbyte>())),
+                    nameof(Byte) => (Expression.Call(typeof(BinaryBufferArrays), nameof(BinaryBufferArrays.ReadByteArray), null, binbuf), Expression.Constant(Array.Empty<byte>())),
+                    nameof(Single) => (Expression.Call(typeof(BinaryBufferArrays), nameof(BinaryBufferArrays.ReadSingleArray), null, binbuf), Expression.Constant(Array.Empty<float>())),
+                    nameof(Double) => (Expression.Call(typeof(BinaryBufferArrays), nameof(BinaryBufferArrays.ReadDoubleArray), null, binbuf), Expression.Constant(Array.Empty<double>())),
+                    nameof(Boolean) => (Expression.Call(typeof(BinaryBufferArrays), nameof(BinaryBufferArrays.ReadBooleanArray), null, binbuf), Expression.Constant(Array.Empty<bool>())),
+                    nameof(Int16) => (Expression.Call(typeof(BinaryBufferArrays), nameof(BinaryBufferArrays.ReadInt16Array), null, binbuf), Expression.Constant(Array.Empty<short>())),
+                    nameof(UInt16) => (Expression.Call(typeof(BinaryBufferArrays), nameof(BinaryBufferArrays.ReadUInt16Array), null, binbuf), Expression.Constant(Array.Empty<ushort>())),
+                    nameof(Int32) => (Expression.Call(typeof(BinaryBufferArrays), nameof(BinaryBufferArrays.ReadInt32Array), null, binbuf), Expression.Constant(Array.Empty<int>())),
+                    nameof(UInt32) => (Expression.Call(typeof(BinaryBufferArrays), nameof(BinaryBufferArrays.ReadUInt32Array), null, binbuf), Expression.Constant(Array.Empty<uint>())),
+                    nameof(Int64) => (Expression.Call(typeof(BinaryBufferArrays), nameof(BinaryBufferArrays.ReadInt64Array), null, binbuf), Expression.Constant(Array.Empty<long>())),
+                    nameof(UInt64) => (Expression.Call(typeof(BinaryBufferArrays), nameof(BinaryBufferArrays.ReadUInt64Array), null, binbuf), Expression.Constant(Array.Empty<ulong>())),
+                    nameof(Char) => (Expression.Call(typeof(BinaryBufferArrays), nameof(BinaryBufferArrays.ReadCharArray), null, binbuf), Expression.Constant(Array.Empty<char>())),
+                    nameof(String) => (Expression.Call(typeof(BinaryBufferArrays), nameof(BinaryBufferArrays.ReadStringArray), null, binbuf, encoding), Expression.Constant(Array.Empty<string>())),
+                    nameof(DateTime) => (Expression.Call(typeof(BinaryBufferArrays), nameof(BinaryBufferArrays.ReadDateTimeArray), null, binbuf), Expression.Constant(Array.Empty<DateTime>())),
+                    nameof(Guid) => (Expression.Call(typeof(BinaryBufferArrays), nameof(BinaryBufferArrays.ReadGuidArray), null, binbuf), Expression.Constant(Array.Empty<Guid>())),
+                    _ => DeserializeObjectArray(propType, binbuf, encoding),
+                };
+                return (isNotNull, result, defaultValue);
+            }
         }
     }
 
@@ -192,15 +222,15 @@ public static class BinaryBufferSerializer
     {
         var bb = typeof(BinaryBuffer);
 
-        var binbufParameter = Expression.Parameter(bb);
-        var encodingParameter = Expression.Parameter(typeof(Encoding));
-        var instParameter = Expression.Parameter(typeof(object));
+        var binbufParameter = Expression.Parameter(bb, "binbufParam");
+        var encodingParameter = Expression.Parameter(typeof(Encoding), "encodingParam");
+        var instParameter = Expression.Parameter(typeof(object), "instanceParam");
 
 
-        var binbufVar = Expression.Variable(bb);
-        var instVar = Expression.Variable(type);
-        var encodingVar = Expression.Variable(typeof(Encoding));
-        var isNull = Expression.Variable(typeof(bool));
+        var binbufVar = Expression.Variable(bb, "binbufVar");
+        var instVar = Expression.Variable(type, "instanceVar");
+        var encodingVar = Expression.Variable(typeof(Encoding), "encodingVar");
+        var isNull = Expression.Variable(typeof(bool), "isNullVar");
 
         var variables = new[] { instVar, binbufVar, encodingVar, isNull };
         var body = new List<Expression>();
@@ -208,16 +238,13 @@ public static class BinaryBufferSerializer
         // VARIABLES
         body.AddRange(new[]
         {
-            Expression.Assign(instVar, Expression.TypeAs(instParameter, type)),
+            Expression.Assign(instVar, Expression.Convert(instParameter, type)),
             Expression.Assign(binbufVar, binbufParameter),
             Expression.Assign(encodingVar, encodingParameter)
         });
 
         // SET_PRORERTIES
         body.AddRange(GetProperties(type, isNull, binbufVar, instVar, encodingVar));
-
-        // RETURN
-        body.Add(instVar);
 
         var block = Expression.Block(variables, body);
 
@@ -237,7 +264,7 @@ public static class BinaryBufferSerializer
         foreach (var property in data)
         {
             var prop = Expression.Property(inst, property.Name);
-            var value = SerializeToBuffer(property.PropertyType, binbuf, prop, inst, encoding);
+            var value = SerializeToBuffer(binbuf, prop, inst, encoding);
             
             result.Add(Expression.Assign(isNull, Expression.IsTrue(value.isNotNull)));
 
@@ -249,44 +276,128 @@ public static class BinaryBufferSerializer
     }
 
 
-    private static (Expression isNotNull, Expression method) SerializeToBuffer(Type propType, Expression binbuf, Expression property, Expression inst, Expression encoding)
+    private static (Expression isNotNull, Expression method) SerializeToBuffer(Expression binbuf, Expression property, Expression inst, Expression encoding)
     {
-        if (!propType.IsArray)
+        var isNotNull = Expression.TypeIs(property, property.Type);
+        if (!property.Type.IsArray)
         {
-            var isNotNull = Expression.TypeIs(property, property.Type);
-            if (propType.IsEnum)
+            if (property.Type.IsEnum)
             {
                 var enumWriter = Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.Write), null, binbuf, Expression.TypeAs(property, typeof(Enum)));
                 return (isNotNull, enumWriter);
             }
             else
             {
-                var result = propType.Name switch
+                var isNulablePrimitive = Helper.IsNullable(property.Type) && property.Type.GenericTypeArguments.First().IsPrimitive;
+                var prop = isNulablePrimitive ? property.Type.GenericTypeArguments.First() : property.Type;
+                var getPrimitive = () => isNulablePrimitive ? Expression.Call(property, nameof(Nullable<byte>.GetValueOrDefault), null) : property;
+                var result = prop.Name switch
                 {
-                    nameof(SByte) => Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.Write), null, binbuf, property),
-                    nameof(Byte) => Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.Write), null, binbuf, property),
-                    nameof(Single) => Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.Write), null, binbuf, property),
-                    nameof(Double) => Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.Write), null, binbuf, property),
-                    nameof(Boolean) => Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.Write), null, binbuf, property),
-                    nameof(Int16) => Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.Write), null, binbuf, property),
-                    nameof(UInt16) => Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.Write), null, binbuf, property),
-                    nameof(Int32) => Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.Write), null, binbuf, property),
-                    nameof(UInt32) => Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.Write), null, binbuf, property),
-                    nameof(Int64) => Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.Write), null, binbuf, property),
-                    nameof(UInt64) => Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.Write), null, binbuf, property),
-                    nameof(Char) => Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.Write), null, binbuf, property),
+                    nameof(SByte) => Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.Write), null, binbuf, getPrimitive()),
+                    nameof(Byte) => Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.Write), null, binbuf, getPrimitive()),
+                    nameof(Single) => Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.Write), null, binbuf, getPrimitive()),
+                    nameof(Double) => Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.Write), null, binbuf, getPrimitive()),
+                    nameof(Boolean) => Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.Write), null, binbuf, getPrimitive()),
+                    nameof(Int16) => Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.Write), null, binbuf, getPrimitive()),
+                    nameof(UInt16) => Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.Write), null, binbuf, getPrimitive()),
+                    nameof(Int32) => Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.Write), null, binbuf, getPrimitive()),
+                    nameof(UInt32) => Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.Write), null, binbuf, getPrimitive()),
+                    nameof(Int64) => Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.Write), null, binbuf, getPrimitive()),
+                    nameof(UInt64) => Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.Write), null, binbuf, getPrimitive()),
+                    nameof(Char) => Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.Write), null, binbuf, getPrimitive()),
                     nameof(String) => Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.Write), null, binbuf, property, encoding),
-                    nameof(DateTime) => Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.Write), null, binbuf, property),
-                    nameof(Guid) => Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.Write), null, binbuf, property),
-                    _ => throw new NotImplementedException(),
+                    nameof(DateTime) => Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.Write), null, binbuf, getPrimitive()),
+                    nameof(Guid) => Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.Write), null, binbuf, getPrimitive()),
+                    _ => Expression.Call(typeof(BinaryBufferSerializer), nameof(BaseSerialize), null, Expression.Constant(property.Type), property, binbuf, encoding),
                 };
                 return (isNotNull, result);
             }
         }
         else
         {
-            var arrType = propType.GetElementType();
-            throw new NotImplementedException();
+            var arrType = property.Type.GetElementType()!;
+            if (arrType.IsEnum)
+            {
+                var mi = typeof(BinaryBufferArrays).GetMethod(nameof(BinaryBufferArrays.WriteEnumArray))!.MakeGenericMethod(arrType);
+
+                var enumWriter = Expression.Call(mi, binbuf, property);
+                return (isNotNull, enumWriter);
+            }
+            else
+            {
+                var mi = (property.Type == typeof(string[]) ? 
+                typeof(BinaryBufferArrays).GetMethod(nameof(BinaryBufferArrays.WriteArray), new[] { binbuf.Type, encoding.Type, property.Type }) :
+                typeof(BinaryBufferArrays).GetMethod(nameof(BinaryBufferArrays.WriteArray), new[] { binbuf.Type, property.Type }))!;
+                var result = arrType.Name switch
+                {
+                    nameof(SByte) => Expression.Call(mi, binbuf, property),
+                    nameof(Byte) => Expression.Call(mi, binbuf, property),
+                    nameof(Single) => Expression.Call(mi, binbuf, property),
+                    nameof(Double) => Expression.Call(mi, binbuf, property),
+                    nameof(Boolean) => Expression.Call(mi, binbuf, property),
+                    nameof(Int16) => Expression.Call(mi, binbuf, property),
+                    nameof(UInt16) => Expression.Call(mi, binbuf, property),
+                    nameof(Int32) => Expression.Call(mi, binbuf, property),
+                    nameof(UInt32) => Expression.Call(mi, binbuf, property),
+                    nameof(Int64) => Expression.Call(mi, binbuf, property),
+                    nameof(UInt64) => Expression.Call(mi, binbuf, property),
+                    nameof(Char) => Expression.Call(mi, binbuf, property),
+                    nameof(String) => Expression.Call(mi, binbuf, encoding, property),
+                    nameof(DateTime) => Expression.Call(mi, binbuf, property),
+                    nameof(Guid) => Expression.Call(mi, binbuf, property),
+                    _ => SerializeObjectArray(binbuf, property, encoding),
+                };
+                return (isNotNull, result);
+            }
         }
+    }
+
+    internal static Expression SerializeObjectArray(Expression binbuf, Expression parameter, Expression encoding)
+    {
+        var i = Expression.Variable(typeof(int), "iVar");
+        var max = Expression.Variable(typeof(int), "maxVar");
+
+        var arr = Expression.Variable(parameter.Type, "arrVar");
+
+        var elementType = parameter.Type.GetElementType()!;
+        
+        var writeSize = Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.Write), null, binbuf, max);
+        var body = Expression.Call(typeof(BinaryBufferSerializer), nameof(BaseSerialize), null, Expression.Constant(elementType), Expression.ArrayAccess(arr, i), binbuf, encoding);
+
+        var result = Expression.Block(new[] { arr, i, max },
+            Expression.Assign(arr, parameter),
+            Expression.Assign(max, Expression.ArrayLength(arr)),
+            writeSize,
+            Expression.Assign(i, Expression.Constant(0)),
+            Helper.For(body, i, max),
+            arr
+        );
+
+        return result;
+    }
+
+    internal static (Expression value, Expression defaultValue) DeserializeObjectArray(Type paramType, Expression binbuf, Expression encoding)
+    {
+        var i = Expression.Variable(typeof(int), "iVar");
+        var max = Expression.Variable(typeof(int), "maxVar");
+
+        var arr = Expression.Variable(paramType);
+
+        var elementType = paramType.GetElementType()!;
+
+        var readSize = Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.ReadInt32), null, binbuf);
+        var callToDeserializer = Expression.Call(typeof(BinaryBufferSerializer), nameof(BaseDeserialize), null, Expression.Constant(elementType), binbuf, encoding);
+
+        var body = Expression.Assign(Expression.ArrayAccess(arr, i), Expression.Convert(callToDeserializer, elementType));
+
+        var result = Expression.Block(new[] { i, max, arr },
+            Expression.Assign(max, readSize),
+            Expression.Assign(i, Expression.Constant(0)),
+            Expression.Assign(arr, Expression.NewArrayBounds(elementType, max)),
+            Helper.For(body, i, max),
+            arr
+        );
+
+        return (result, Expression.NewArrayBounds(elementType, Expression.Constant(0)));
     }
 }
