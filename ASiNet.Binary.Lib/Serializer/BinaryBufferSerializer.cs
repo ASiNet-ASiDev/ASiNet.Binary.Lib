@@ -88,14 +88,7 @@ public static class BinaryBufferSerializer
     {
         var bb = typeof(BinaryBuffer);
 
-        NewExpression inst;
-        if (type.IsGenericType)
-        {
-            var genericType = type.GetConstructors().FirstOrDefault()!;
-            inst = Expression.New(genericType);
-        }
-        else
-            inst = Expression.New(type);
+        NewExpression inst = Expression.New(type);
 
         var binbufParameter = Expression.Parameter(bb);
         var encodingParameter = Expression.Parameter(typeof(Encoding));
