@@ -73,13 +73,13 @@ public static class BinaryBufferSerializer
 
     public static (DeserializeObjLambda Deserialize, SerializeObjLambda Serialize) GenerateLambdaFromTypeOrGetFromBuffer(Type type)
     {
-        if(_buffer.TryGetValue(type.Name, out var value))
+        if(_buffer.TryGetValue(type.FullName!, out var value))
             return value;
 
         var serialize = GenerateSerializeLambda(type);
         var deserialize = GenerateDeserializeLambda(type);
 
-        _buffer.TryAdd(type.Name, (deserialize, serialize));
+        _buffer.TryAdd(type.FullName!, (deserialize, serialize));
 
         return (deserialize, serialize);
     }
@@ -88,7 +88,14 @@ public static class BinaryBufferSerializer
     {
         var bb = typeof(BinaryBuffer);
 
-        var inst = Expression.New(type);
+        NewExpression inst;
+        if (type.IsGenericType)
+        {
+            var genericType = type.GetConstructors().FirstOrDefault()!;
+            inst = Expression.New(genericType);
+        }
+        else
+            inst = Expression.New(type);
 
         var binbufParameter = Expression.Parameter(bb);
         var encodingParameter = Expression.Parameter(typeof(Encoding));

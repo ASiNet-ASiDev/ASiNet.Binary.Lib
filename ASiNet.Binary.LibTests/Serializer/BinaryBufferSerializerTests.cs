@@ -40,6 +40,32 @@ namespace ASiNet.Binary.Lib.Serializer.Tests
         }
 
         [TestMethod()]
+        public void SerializeGenericsTest()
+        {
+            var raw = new Gn<Gn<Gn<int>>>()
+            {
+                Value = new() 
+                { 
+                    Value = new()
+                    { 
+                        Value = 10
+                    }
+                }
+            };
+            var r = 0;
+            var w = 0;
+            var buffer = new BinaryBuffer(new byte[ushort.MaxValue], new byte[sizeof(decimal)], ref w, ref r);
+
+            if (!BinaryBufferSerializer.Serialize(raw, buffer))
+                Assert.Fail();
+
+            var dresult = BinaryBufferSerializer.Deserialize<Gn<Gn<Gn<int>>>>(buffer);
+
+            Assert.IsNotNull(dresult);
+            Assert.AreEqual(JsonSerializer.Serialize(raw), JsonSerializer.Serialize(dresult));
+        }
+
+        [TestMethod()]
         public void SerializeArraysTest()
         {
             var raw = new B()
@@ -257,6 +283,11 @@ namespace ASiNet.Binary.Lib.Serializer.Tests
             Assert.AreEqual(JsonSerializer.Serialize(raw), JsonSerializer.Serialize(dresult));
         }
     }
+}
+
+class Gn<T>
+{
+    public T Value { get; set; }
 }
 
 struct A
