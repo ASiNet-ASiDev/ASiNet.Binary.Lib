@@ -6,10 +6,10 @@ using ProtoBuf;
 using System.Text.Json;
 
 
-BenchmarkRunner.Run<BinaryBufferSerializerTest>();
+//BenchmarkRunner.Run<BinaryBufferSerializerTest>();
 
-//var t = new BinaryBufferSerializerTest();
-//t.Protobuf_SerializerTest();
+var i = 10;
+Console.WriteLine(++i);
 
 Console.ReadLine();
 

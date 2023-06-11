@@ -122,7 +122,25 @@ namespace ASiNet.Binary.Lib.Serializer.Tests
                             Id = 4,
                             FirstName = "Весельчак",
                             LastName = "B16",
-                            RefU = null,
+                            RefU = new R()
+                            {
+                                Id = 4,
+                                FirstName = "Весельчак",
+                                LastName = "B16",
+                                RefU = new R()
+                                {
+                                    Id = 4,
+                                    FirstName = "Весельчак",
+                                    LastName = "B16",
+                                    RefU = new R()
+                                    {
+                                        Id = 4,
+                                        FirstName = "Весельчак",
+                                        LastName = "B16",
+                                        RefU = null,
+                                    }
+                                }
+                            }
                         }
                     }
                 }

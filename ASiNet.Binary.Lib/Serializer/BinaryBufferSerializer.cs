@@ -12,10 +12,12 @@ using System.Threading.Tasks;
 namespace ASiNet.Binary.Lib.Serializer;
 
 public delegate object DeserializeObjLambda(BinaryBuffer buffer, Encoding encoding);
-public delegate void SerializeObjLambda(object obj, BinaryBuffer buffer, Encoding encoding);
+public delegate void SerializeObjLambda(object obj, BinaryBuffer buffer, Encoding encoding, ushort deep);
 public static class BinaryBufferSerializer
 {
     private static Dictionary<string, (DeserializeObjLambda Deserialize, SerializeObjLambda Serialize)> _buffer = new();
+
+    public static ushort MaxSerializeDepth { get; set; } = 16;
 
     /// <summary>
     /// Записывает обьект в <see cref="BinaryBuffer"/>, может игнорировать некоторые типы.
@@ -28,14 +30,14 @@ public static class BinaryBufferSerializer
     {
         encoding ??= Encoding.UTF8;
 
-        return BaseSerialize(typeof(T), obj!, buffer, encoding);
+        return BaseSerialize(typeof(T), obj!, buffer, encoding, 0);
     }
 
     public static bool Serialize(Type type, in object obj, BinaryBuffer buffer, Encoding? encoding = null)
     {
         encoding ??= Encoding.UTF8;
 
-        return BaseSerialize(type, obj, buffer, encoding);
+        return BaseSerialize(type, obj, buffer, encoding, 0);
     }
     /// <summary>
     /// Читает обьект из <see cref="BinaryBuffer"/>, незаполняет проигнорированные поля, заменяет <see cref="null"/> на значение по умолчанию. 
@@ -57,10 +59,13 @@ public static class BinaryBufferSerializer
         return BaseDeserialize(type, buffer, encoding);
     }
 
-    internal static bool BaseSerialize(Type type, in object obj, BinaryBuffer buffer, Encoding encoding)
+    internal static bool BaseSerialize(Type type, in object obj, BinaryBuffer buffer, Encoding encoding, ushort deep)
     {
+        deep++;
+        if(deep > MaxSerializeDepth)
+            throw new Exception("Превышена максимальная глубина сериализации!");
         var lambda = GenerateLambdaFromTypeOrGetFromBuffer(type);
-        lambda.Serialize(obj, buffer, encoding);
+        lambda.Serialize(obj, buffer, encoding, deep);
         return true;
     }
 
@@ -71,7 +76,7 @@ public static class BinaryBufferSerializer
         return result;
     }
 
-    public static (DeserializeObjLambda Deserialize, SerializeObjLambda Serialize) GenerateLambdaFromTypeOrGetFromBuffer(Type type)
+    private static (DeserializeObjLambda Deserialize, SerializeObjLambda Serialize) GenerateLambdaFromTypeOrGetFromBuffer(Type type)
     {
         if(_buffer.TryGetValue(type.FullName!, out var value))
             return value;
@@ -225,14 +230,15 @@ public static class BinaryBufferSerializer
         var binbufParameter = Expression.Parameter(bb, "binbufParam");
         var encodingParameter = Expression.Parameter(typeof(Encoding), "encodingParam");
         var instParameter = Expression.Parameter(typeof(object), "instanceParam");
-
+        var deepParameter = Expression.Parameter(typeof(ushort), "deepParameter");
 
         var binbufVar = Expression.Variable(bb, "binbufVar");
         var instVar = Expression.Variable(type, "instanceVar");
         var encodingVar = Expression.Variable(typeof(Encoding), "encodingVar");
         var isNull = Expression.Variable(typeof(bool), "isNullVar");
+        var deep = Expression.Variable(typeof(ushort), "deep");
 
-        var variables = new[] { instVar, binbufVar, encodingVar, isNull };
+        var variables = new[] { instVar, binbufVar, encodingVar, isNull, deep };
         var body = new List<Expression>();
 
         // VARIABLES
@@ -240,20 +246,21 @@ public static class BinaryBufferSerializer
         {
             Expression.Assign(instVar, Expression.Convert(instParameter, type)),
             Expression.Assign(binbufVar, binbufParameter),
-            Expression.Assign(encodingVar, encodingParameter)
+            Expression.Assign(encodingVar, encodingParameter),
+            Expression.Assign(deep, deepParameter),
         });
 
         // SET_PRORERTIES
-        body.AddRange(GetProperties(type, isNull, binbufVar, instVar, encodingVar));
+        body.AddRange(GetProperties(type, isNull, binbufVar, instVar, encodingVar, deep));
 
         var block = Expression.Block(variables, body);
 
-        var lambdaRaw = Expression.Lambda<SerializeObjLambda>(block, instParameter, binbufParameter, encodingParameter);
+        var lambdaRaw = Expression.Lambda<SerializeObjLambda>(block, instParameter, binbufParameter, encodingParameter, deepParameter);
         var lambda = lambdaRaw.Compile();
         return lambda;
     }
 
-    private static List<Expression> GetProperties(Type type, Expression isNull, Expression binbuf, Expression inst, Expression encoding)
+    private static List<Expression> GetProperties(Type type, Expression isNull, Expression binbuf, Expression inst, Expression encoding, Expression deep)
     {
         var result = new List<Expression>();
 
@@ -264,7 +271,7 @@ public static class BinaryBufferSerializer
         foreach (var property in data)
         {
             var prop = Expression.Property(inst, property.Name);
-            var value = SerializeToBuffer(binbuf, prop, inst, encoding);
+            var value = SerializeToBuffer(binbuf, prop, inst, encoding, deep);
             
             result.Add(Expression.Assign(isNull, Expression.IsTrue(value.isNotNull)));
 
@@ -276,7 +283,7 @@ public static class BinaryBufferSerializer
     }
 
 
-    private static (Expression isNotNull, Expression method) SerializeToBuffer(Expression binbuf, Expression property, Expression inst, Expression encoding)
+    private static (Expression isNotNull, Expression method) SerializeToBuffer(Expression binbuf, Expression property, Expression inst, Expression encoding, Expression deep)
     {
         var isNotNull = Expression.TypeIs(property, property.Type);
         if (!property.Type.IsArray)
@@ -308,7 +315,7 @@ public static class BinaryBufferSerializer
                     nameof(String) => Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.Write), null, binbuf, property, encoding),
                     nameof(DateTime) => Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.Write), null, binbuf, getPrimitive()),
                     nameof(Guid) => Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.Write), null, binbuf, getPrimitive()),
-                    _ => Expression.Call(typeof(BinaryBufferSerializer), nameof(BaseSerialize), null, Expression.Constant(property.Type), property, binbuf, encoding),
+                    _ => Expression.Call(typeof(BinaryBufferSerializer), nameof(BaseSerialize), null, Expression.Constant(property.Type), property, binbuf, encoding, deep),
                 };
                 return (isNotNull, result);
             }
@@ -345,14 +352,14 @@ public static class BinaryBufferSerializer
                     nameof(String) => Expression.Call(mi, binbuf, encoding, property),
                     nameof(DateTime) => Expression.Call(mi, binbuf, property),
                     nameof(Guid) => Expression.Call(mi, binbuf, property),
-                    _ => SerializeObjectArray(binbuf, property, encoding),
+                    _ => SerializeObjectArray(binbuf, property, encoding, deep),
                 };
                 return (isNotNull, result);
             }
         }
     }
 
-    internal static Expression SerializeObjectArray(Expression binbuf, Expression parameter, Expression encoding)
+    internal static Expression SerializeObjectArray(Expression binbuf, Expression parameter, Expression encoding, Expression deep)
     {
         var i = Expression.Variable(typeof(int), "iVar");
         var max = Expression.Variable(typeof(int), "maxVar");
@@ -362,7 +369,7 @@ public static class BinaryBufferSerializer
         var elementType = parameter.Type.GetElementType()!;
         
         var writeSize = Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.Write), null, binbuf, max);
-        var body = Expression.Call(typeof(BinaryBufferSerializer), nameof(BaseSerialize), null, Expression.Constant(elementType), Expression.ArrayAccess(arr, i), binbuf, encoding);
+        var body = Expression.Call(typeof(BinaryBufferSerializer), nameof(BaseSerialize), null, Expression.Constant(elementType), Expression.ArrayAccess(arr, i), binbuf, encoding, deep);
 
         var result = Expression.Block(new[] { arr, i, max },
             Expression.Assign(arr, parameter),
