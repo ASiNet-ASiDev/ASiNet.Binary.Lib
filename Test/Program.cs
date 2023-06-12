@@ -6,10 +6,7 @@ using ProtoBuf;
 using System.Text.Json;
 
 
-//BenchmarkRunner.Run<BinaryBufferSerializerTest>();
-
-var i = 10;
-Console.WriteLine(++i);
+BenchmarkRunner.Run<BinaryBufferSerializerTest>();
 
 Console.ReadLine();
 
@@ -21,14 +18,12 @@ public class BinaryBufferSerializerTest
     [Benchmark]
     public void BinaryBufferSerializer_SerializerTest()
     {
-        var r = 0;
-        var w = 0;
-        var bb = new BinaryBuffer(stackalloc byte[ushort.MaxValue], stackalloc byte[sizeof(decimal)], ref r, ref w);
+        Span<byte> bb = stackalloc byte[ushort.MaxValue];
 
 
-        var result = BinaryBufferSerializer.Serialize(_obj, bb);
+        var result = BinarySerializer.Serialize(_obj, bb);
 
-        _obj = BinaryBufferSerializer.Deserialize<GlobalSerializedTestObj>(bb)!;
+        _obj = BinarySerializer.Deserialize<GlobalSerializedTestObj>(bb)!;
     }
 
     [Benchmark]

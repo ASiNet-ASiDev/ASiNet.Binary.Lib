@@ -26,14 +26,12 @@ namespace ASiNet.Binary.Lib.Serializer.Tests
                 G = Guid.NewGuid(),
                 En = SerializedType.Int16,
             };
-            var r = 0;
-            var w = 0;
-            var buffer = new BinaryBuffer(new byte[ushort.MaxValue], new byte[sizeof(decimal)], ref w, ref r);
+            Span<byte> buffer = new byte[ushort.MaxValue];
 
-            if (!BinaryBufferSerializer.Serialize(raw, buffer))
+            if (BinarySerializer.Serialize(raw, buffer) == -1)
                 Assert.Fail();
 
-            var dresult = BinaryBufferSerializer.Deserialize<A>(buffer);
+            var dresult = BinarySerializer.Deserialize<A>(buffer);
 
             Assert.IsNotNull(dresult);
             Assert.AreEqual(JsonSerializer.Serialize(raw), JsonSerializer.Serialize(dresult));
@@ -52,14 +50,13 @@ namespace ASiNet.Binary.Lib.Serializer.Tests
                     }
                 }
             };
-            var r = 0;
-            var w = 0;
-            var buffer = new BinaryBuffer(new byte[ushort.MaxValue], new byte[sizeof(decimal)], ref w, ref r);
 
-            if (!BinaryBufferSerializer.Serialize(raw, buffer))
+            Span<byte> buffer = new byte[ushort.MaxValue];
+
+            if (BinarySerializer.Serialize(raw, buffer) == -1)
                 Assert.Fail();
 
-            var dresult = BinaryBufferSerializer.Deserialize<Gn<Gn<Gn<int>>>>(buffer);
+            var dresult = BinarySerializer.Deserialize<Gn<Gn<Gn<int>>>>(buffer);
 
             Assert.IsNotNull(dresult);
             Assert.AreEqual(JsonSerializer.Serialize(raw), JsonSerializer.Serialize(dresult));
@@ -86,14 +83,12 @@ namespace ASiNet.Binary.Lib.Serializer.Tests
                 G = new[] { Guid.NewGuid() },
                 En = new[] { SerializedType.Int16 },
             };
-            var r = 0;
-            var w = 0;
-            var buffer = new BinaryBuffer(new byte[ushort.MaxValue], new byte[sizeof(decimal)], ref w, ref r);
+            Span<byte> buffer = new byte[ushort.MaxValue];
 
-            if (!BinaryBufferSerializer.Serialize(raw, buffer))
+            if (BinarySerializer.Serialize(raw, buffer) == -1) 
                 Assert.Fail();
 
-            var dresult = BinaryBufferSerializer.Deserialize<B>(buffer);
+            var dresult = BinarySerializer.Deserialize<B>(buffer);
 
             Assert.IsNotNull(dresult);
             Assert.AreEqual(JsonSerializer.Serialize(raw), JsonSerializer.Serialize(dresult));
@@ -145,14 +140,12 @@ namespace ASiNet.Binary.Lib.Serializer.Tests
                     }
                 }
             };
-            var r = 0;
-            var w = 0;
-            var buffer = new BinaryBuffer(new byte[ushort.MaxValue], new byte[sizeof(decimal)], ref w, ref r);
+            Span<byte> buffer = new byte[ushort.MaxValue];
 
-            if (!BinaryBufferSerializer.Serialize(raw, buffer))
+            if (BinarySerializer.Serialize(raw, buffer) == -1)
                 Assert.Fail();
 
-            var dresult = BinaryBufferSerializer.Deserialize<R>(buffer);
+            var dresult = BinarySerializer.Deserialize<R>(buffer);
 
             Assert.IsNotNull(dresult);
             Assert.AreEqual(JsonSerializer.Serialize(raw), JsonSerializer.Serialize(dresult));
@@ -189,16 +182,13 @@ namespace ASiNet.Binary.Lib.Serializer.Tests
                     }
                 }
             };
-           
-            var r = 0;
-            var w = 0;
-            var arr = new byte[ushort.MaxValue];
-            var buffer = new BinaryBuffer(arr, new byte[sizeof(decimal)], ref w, ref r);
 
-            if (!BinaryBufferSerializer.Serialize(raw, buffer))
+            Span<byte> buffer = new byte[ushort.MaxValue];
+
+            if (BinarySerializer.Serialize(raw, buffer) == -1)
                 Assert.Fail();
 
-            var dresult = BinaryBufferSerializer.Deserialize<O>(buffer);
+            var dresult = BinarySerializer.Deserialize<O>(buffer);
 
             Assert.IsNotNull(dresult);
             Assert.AreEqual(JsonSerializer.Serialize(raw), JsonSerializer.Serialize(dresult));
@@ -288,14 +278,12 @@ namespace ASiNet.Binary.Lib.Serializer.Tests
                     }
                 }
             };
-            var r = 0;
-            var w = 0;
-            var buffer = new BinaryBuffer(new byte[ushort.MaxValue], new byte[sizeof(decimal)], ref w, ref r);
+            Span<byte> buffer = new byte[ushort.MaxValue];
 
-            if (!BinaryBufferSerializer.Serialize(raw, buffer))
+            if (BinarySerializer.Serialize(raw, buffer) == -1)
                 Assert.Fail();
 
-            var dresult = BinaryBufferSerializer.Deserialize<O>(buffer);
+            var dresult = BinarySerializer.Deserialize<O>(buffer);
 
             Assert.IsNotNull(dresult);
             Assert.AreEqual(JsonSerializer.Serialize(raw), JsonSerializer.Serialize(dresult));
