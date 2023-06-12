@@ -15,6 +15,7 @@ BinaryBufferSerializer позволяет сериализовать больш�
 * Строки: string, char
 * Перечисления: Enum : byte / sbyte / short / ushort / int / uint / long / ulong
 * Остальные: DateTime, Guid
+* А также массивы этих типов
 
 ### Пример создания BinaryBuffer и записи в него простых значений:
 
@@ -60,20 +61,19 @@ var str = binbuf.ReadString(Encoding.UTF8);
 Concole.WriteLine(a);
 Concole.WriteLine(str);
 ```
-## BinaryBufferSerializer
+## BinarySerializer
 
 Алгоритм:
 * Получает все свойства обьекта
 * Сортирует их по названию без учёта регистра
 * последовательно записывает/читает в/из BinaryBuffer
 
-### Пример использования BinaryBufferSerializer : Сериализация
+### Пример использования BinarySerializer : Сериализация
 
 ```cs
-using ASiNet.Binary.Lib;
+using ASiNet.Binary.Lib.Serializer;
 
-var binbuf = new BinaryBuffer(area, buffer, ref r, ref w);
-
+Span<byte> buffer = stackallock byte[ushort.MaxValue];
 var user = new User()
 { 
   Id = 10,
@@ -81,7 +81,7 @@ var user = new User()
   LastName = "None"
 }
 
-BinaryBufferSerializer.Serialize(user, binbuf);
+BinarySerializer.Serialize(user, buffer);
 
 var result = binbuf.ToArray();
 Concole.WriteLine(string.Join(' ', result));
@@ -94,12 +94,12 @@ class User
 }
 ```
 
-### Пример использования BinaryBufferSerializer : Весериализация
+### Пример использования BinarSerializer : Десериализация
 
 ```cs
-using ASiNet.Binary.Lib;
+using ASiNet.Binary.Lib.Serializer;
 
-var user = BinaryBufferSerializer.Deserialize<User>(binbuf);
+var user = BinarySerializer.Deserialize<User>(buffer);
 
 Concole.WriteLine(user.Id);
 Concole.WriteLine(user.FirstName);
