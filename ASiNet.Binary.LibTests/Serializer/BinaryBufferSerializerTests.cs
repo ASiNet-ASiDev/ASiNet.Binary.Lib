@@ -6,12 +6,48 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Text.Json;
+using Newtonsoft.Json.Linq;
 
 namespace ASiNet.Binary.Lib.Serializer.Tests
 {
     [TestClass()]
     public class BinaryBufferSerializerTests
     {
+        [TestMethod()]
+        public void SerializePrimitivesObjects()
+        {
+            var primitives = new object[]
+            {
+                (byte)10,
+                (sbyte)11,
+                false,
+                Guid.NewGuid(),
+                "test",
+                (int)244,
+                (uint)245,
+                (float)1.1f,
+                (double)1.2f,
+                (short)31,
+                (ushort)32,
+                'A',
+                DateTime.Now,
+                (long)44444,
+                (ulong)55555,
+            };
+            foreach (var item in primitives)
+            {
+                Span<byte> buffer = new byte[128];
+
+                if (BinarySerializer.Serialize(item.GetType(), item, buffer) == -1)
+                    Assert.Fail();
+
+                var dresult = BinarySerializer.Deserialize(item.GetType(), buffer);
+
+                Assert.IsNotNull(dresult);
+                Assert.AreEqual(JsonSerializer.Serialize(item), JsonSerializer.Serialize(dresult));
+            }
+        }
+
         [TestMethod()]
         public void SerializePrimitivesTest()
         {
