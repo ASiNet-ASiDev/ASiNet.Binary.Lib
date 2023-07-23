@@ -99,7 +99,7 @@ public static class BinarySerializer
     /// <param name="encoding">Character encoding used, by default <see cref="Encoding.UTF8"/>.</param>
     /// <returns>Deserialized object, or nothing if deserialized object failed.</returns>
     /// <exception cref="DeserializeException"></exception>
-    public static T? Deserialize<T>(Span<byte> buffer, Encoding? encoding = null) where T : new()
+    public static T? Deserialize<T>(Span<byte> buffer, Encoding? encoding = null)
     {
         try
         {
