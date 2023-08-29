@@ -14,43 +14,52 @@ internal class GenerateDeserializeLambda
 {
     public static DeserializeObjLambda GenerateLambda(Type type)
     {
-        var bb = typeof(BinaryBuffer);
-
-        NewExpression inst = Expression.New(type);
-
-        var binbufParameter = Expression.Parameter(bb);
-        var encodingParameter = Expression.Parameter(typeof(Encoding));
-
-        var binbufVar = Expression.Variable(bb, "binbuffVar");
-        var instVar = Expression.Variable(type, "instanceVar");
-        var encodingVar = Expression.Variable(typeof(Encoding), "encodingVar");
-
-
-        var variables = new[] { instVar, binbufVar, encodingVar };
-        var body = new List<Expression>();
-
-        // VARIABLES
-        body.AddRange(new[]
+        try
         {
+            BinarySerializer._generationQueue.Add(type);
+
+            var bb = typeof(BinaryBuffer);
+
+            NewExpression inst = Expression.New(type);
+
+            var binbufParameter = Expression.Parameter(bb);
+            var encodingParameter = Expression.Parameter(typeof(Encoding));
+
+            var binbufVar = Expression.Variable(bb, "binbuffVar");
+            var instVar = Expression.Variable(type, "instanceVar");
+            var encodingVar = Expression.Variable(typeof(Encoding), "encodingVar");
+
+
+            var variables = new[] { instVar, binbufVar, encodingVar };
+            var body = new List<Expression>();
+
+            // VARIABLES
+            body.AddRange(new[]
+            {
             Expression.Assign(instVar, inst),
             Expression.Assign(binbufVar, binbufParameter),
             Expression.Assign(encodingVar, encodingParameter)
         });
 
-        // SET_PRORERTIES
-        if (type.IsEnum)
-            body.Add(DeserializeEnum(type, binbufVar, instVar, encodingVar));
-        else
-            body.AddRange(DeserializeProperties(type, binbufVar, instVar, encodingVar));
+            // SET_PRORERTIES
+            if (type.IsEnum)
+                body.Add(DeserializeEnum(type, binbufVar, instVar, encodingVar));
+            else
+                body.AddRange(DeserializeProperties(type, binbufVar, instVar, encodingVar));
 
-        // RETURN
-        body.Add(Expression.Convert(instVar, typeof(object)));
+            // RETURN
+            body.Add(Expression.Convert(instVar, typeof(object)));
 
-        var block = Expression.Block(variables, body);
+            var block = Expression.Block(variables, body);
 
-        var lambdaRaw = Expression.Lambda<DeserializeObjLambda>(block, binbufParameter, encodingParameter);
-        var lambda = lambdaRaw.Compile();
-        return lambda;
+            var lambdaRaw = Expression.Lambda<DeserializeObjLambda>(block, binbufParameter, encodingParameter);
+            var lambda = lambdaRaw.Compile();
+            return lambda;
+        }
+        finally
+        {
+            BinarySerializer._generationQueue.Remove(type);
+        }
     }
 
     private static List<Expression> DeserializeProperties(Type type, Expression binbuf, Expression inst, Expression encoding)
@@ -107,8 +116,8 @@ internal class GenerateDeserializeLambda
                         inst,
                         Expression.Convert(
                             Expression.Convert(
-                                Helper.CallBaseDeserializeMethod(
-                                        Expression.Constant(ut),
+                                GetLambdaOrUseRuntime(
+                                        ut,
                                         binbuf,
                                             encoding), ut), 
                             type)
@@ -137,8 +146,8 @@ internal class GenerateDeserializeLambda
                         Expression.PropertyOrField(inst, pi.Name),
                         Expression.Convert(
                             Expression.Convert(
-                                Helper.CallBaseDeserializeMethod(
-                                    Expression.Constant(ut), 
+                                GetLambdaOrUseRuntime(
+                                    ut, 
                                     binbuf, 
                                     encoding), 
                                 propType), 
@@ -167,10 +176,10 @@ internal class GenerateDeserializeLambda
                     Expression.Assign(
                         Expression.PropertyOrField(inst, pi.Name),
                         Expression.Convert(
-                            Helper.CallBaseDeserializeMethod(
-                                Expression.Constant(propType), 
+                            GetLambdaOrUseRuntime(
+                                propType, 
                                 binbuf, 
-                                 encoding), 
+                                encoding), 
                             pi.PropertyType)
                         )
                     )
@@ -188,7 +197,6 @@ internal class GenerateDeserializeLambda
         var array = Expression.Variable(propType);
 
         var et = propType.GetElementType()!;
-        var etExp = Expression.Constant(et);
 
         return Expression.Block(new[] { enumInstanse },
 
@@ -216,8 +224,8 @@ internal class GenerateDeserializeLambda
                     Helper.ForeachSetArray(
                         array, 
                         Expression.Convert(
-                            Helper.CallBaseDeserializeMethod(
-                                etExp,
+                            GetLambdaOrUseRuntime(
+                                et,
                                 binbuf, 
                                 encoding),
                             et)
@@ -249,13 +257,36 @@ internal class GenerateDeserializeLambda
                     Expression.Assign(
                         Expression.PropertyOrField(inst, pi.Name),
                         Expression.Convert(
-                            Helper.CallBaseDeserializeMethod(
-                                Expression.Constant(propType),
+                            GetLambdaOrUseRuntime(
+                                propType,
                                 binbuf,
-                                 encoding),
+                                encoding),
                             pi.PropertyType)
                         )
                     )
                 );
+    }
+
+
+    private static Expression GetLambdaOrUseRuntime(
+        Type propType,
+        Expression binbuf,
+        Expression encoding)
+    {
+        if (BinarySerializer._generationQueue.FirstOrDefault(x => x == propType) is null)
+        {
+            var lambda = BinarySerializer.GenerateLambdaFromTypeOrGetFromBuffer(propType).Deserialize;
+            return Helper.CallDeserializeLambda(
+                lambda,
+                binbuf,
+                encoding);
+        }
+        else
+        {
+            return Helper.CallBaseDeserializeMethod(
+                Expression.Constant(propType),
+                binbuf,
+                encoding);
+        }
     }
 }

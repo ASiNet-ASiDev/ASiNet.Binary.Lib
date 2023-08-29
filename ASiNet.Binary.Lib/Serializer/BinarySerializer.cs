@@ -20,6 +20,9 @@ public static class BinarySerializer
 
     private static Dictionary<string, (DeserializeObjLambda Deserialize, SerializeObjLambda Serialize)> _buffer = new();
 
+
+    internal static List<Type> _generationQueue = new();
+
     public static ushort MaxSerializeDepth { get; set; } = 16;
 
     /// <summary>
@@ -172,7 +175,7 @@ public static class BinarySerializer
         return result;
     }
 
-    private static (DeserializeObjLambda Deserialize, SerializeObjLambda Serialize) GenerateLambdaFromTypeOrGetFromBuffer(Type type)
+    internal static (DeserializeObjLambda Deserialize, SerializeObjLambda Serialize) GenerateLambdaFromTypeOrGetFromBuffer(Type type)
     {
         if (_buffer.TryGetValue(type.FullName!, out var value))
             return value;

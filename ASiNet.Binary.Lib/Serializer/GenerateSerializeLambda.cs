@@ -3,6 +3,7 @@ using ASiNet.Binary.Lib.Expressions.Arrays;
 using ASiNet.Binary.Lib.Expressions.BaseTypes;
 using ASiNet.Binary.Lib.Serializer.Attributes;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
@@ -15,41 +16,50 @@ internal static class GenerateSerializeLambda
 {
     public static SerializeObjLambda GenerateLambda(Type type)
     {
-        var bb = typeof(BinaryBuffer);
-
-        var binbufParameter = Expression.Parameter(bb, "binbufParam");
-        var encodingParameter = Expression.Parameter(typeof(Encoding), "encodingParam");
-        var instParameter = Expression.Parameter(typeof(object), "instanceParam");
-        var deepParameter = Expression.Parameter(typeof(ushort), "deepParameter");
-
-        var binbufVar = Expression.Variable(bb, "binbufVar");
-        var instVar = Expression.Variable(type, "instanceVar");
-        var encodingVar = Expression.Variable(typeof(Encoding), "encodingVar");
-        var deep = Expression.Variable(typeof(ushort), "deep");
-
-        var variables = new[] { instVar, binbufVar, encodingVar, deep };
-        var body = new List<Expression>();
-
-        // VARIABLES
-        body.AddRange(new[]
+        try
         {
+            BinarySerializer._generationQueue.Add(type);
+            var bb = typeof(BinaryBuffer);
+
+            var binbufParameter = Expression.Parameter(bb, "binbufParam");
+            var encodingParameter = Expression.Parameter(typeof(Encoding), "encodingParam");
+            var instParameter = Expression.Parameter(typeof(object), "instanceParam");
+            var deepParameter = Expression.Parameter(typeof(ushort), "deepParameter");
+
+            var binbufVar = Expression.Variable(bb, "binbufVar");
+            var instVar = Expression.Variable(type, "instanceVar");
+            var encodingVar = Expression.Variable(typeof(Encoding), "encodingVar");
+            var deep = Expression.Variable(typeof(ushort), "deep");
+
+            var variables = new[] { instVar, binbufVar, encodingVar, deep };
+            var body = new List<Expression>();
+
+            // VARIABLES
+            body.AddRange(new[]
+            {
             Expression.Assign(instVar, Expression.Convert(instParameter, type)),
             Expression.Assign(binbufVar, binbufParameter),
             Expression.Assign(encodingVar, encodingParameter),
             Expression.Assign(deep, deepParameter),
         });
-        
 
-        if(type.IsEnum)
-            body.Add(SerializeEnum(type, binbufVar, instVar, encodingVar, deep));
-        else
-            body.AddRange(SerializeObject(type, binbufVar, instVar, encodingVar, deep));
 
-        var block = Expression.Block(variables, body);
+            if (type.IsEnum)
+                body.Add(SerializeEnum(type, binbufVar, instVar));
+            else
+                body.AddRange(SerializeObject(type, binbufVar, instVar, encodingVar, deep));
 
-        var lambdaRaw = Expression.Lambda<SerializeObjLambda>(block, instParameter, binbufParameter, encodingParameter, deepParameter);
-        var lambda = lambdaRaw.Compile();
-        return lambda;
+            var block = Expression.Block(variables, body);
+
+            var lambdaRaw = Expression.Lambda<SerializeObjLambda>(block, instParameter, binbufParameter, encodingParameter, deepParameter);
+            var lambda = lambdaRaw.Compile();
+
+            return lambda;
+        }
+        finally
+        {
+            BinarySerializer._generationQueue.Remove(type);
+        }
     }
 
     private static List<Expression> SerializeObject(Type type, Expression binbuf, Expression inst, Expression encoding, Expression deep)
@@ -90,9 +100,7 @@ internal static class GenerateSerializeLambda
     internal static Expression SerializeEnum(
         Type type,
         Expression binbuf,
-        Expression inst,
-        Expression encoding,
-        Expression deep)
+        Expression inst)
     {
         if (Helper.IsNullable(type))
         {
@@ -126,13 +134,16 @@ internal static class GenerateSerializeLambda
         if (Helper.IsNullable(pi.PropertyType))
         {
             var et = Nullable.GetUnderlyingType(pi.PropertyType)!.GetEnumUnderlyingType()!;
+
             return Helper.WriteNullableValueTypes(
                     inst, 
                     pi.Name, 
-                    binbuf, 
-                    Helper.CallBaseSerializeMethod(Expression.Constant(et),
-                        Expression.PropertyOrField(inst, pi.Name),
+                    binbuf,
+                    GetLambdaOrUseRuntime(
+                        et,
+                        pi,
                         binbuf,
+                        inst,
                         encoding,
                         deep));   
         }
@@ -142,11 +153,13 @@ internal static class GenerateSerializeLambda
             return Helper.WriteNotNullableObject(
                 binbuf, 
                 PropertyFlags.NotNullValue,
-                Helper.CallBaseSerializeMethod(Expression.Constant(et),
-                    Expression.PropertyOrField(inst, pi.Name),
-                    binbuf,
-                    encoding,
-                    deep));
+                GetLambdaOrUseRuntime(
+                        et,
+                        pi,
+                        binbuf,
+                        inst,
+                        encoding,
+                        deep));
         }
     }
 
@@ -159,28 +172,34 @@ internal static class GenerateSerializeLambda
     {
         if (Helper.IsNullable(pi.PropertyType))
         {
-            var pt = Nullable.GetUnderlyingType(pi.PropertyType);
+            var pt = Nullable.GetUnderlyingType(pi.PropertyType)!;
+
             return Helper.WriteNullableValueTypes(
                     inst,
                     pi.Name,
                     binbuf,
-                    Helper.CallBaseSerializeMethod(Expression.Constant(pt),
-                        Expression.PropertyOrField(inst, pi.Name),
+                    GetLambdaOrUseRuntime(
+                        pt,
+                        pi,
                         binbuf,
+                        inst,
                         encoding,
                         deep));
         }
         else
         {
             var pt = pi.PropertyType;
+
             return Helper.WriteNotNullableObject(
                 binbuf,
                 PropertyFlags.NotNullValue,
-                Helper.CallBaseSerializeMethod(Expression.Constant(pt),
-                    Expression.PropertyOrField(inst, pi.Name),
-                    binbuf,
-                    encoding,
-                    deep));
+                GetLambdaOrUseRuntime(
+                        pt,
+                        pi,
+                        binbuf,
+                        inst,
+                        encoding,
+                        deep));
         }
     }
 
@@ -197,10 +216,12 @@ internal static class GenerateSerializeLambda
             binbuf,
             Helper.ForeachGetArray(
                 Expression.PropertyOrField(inst, pi.Name), 
-                item => Helper.CallBaseSerializeMethod(
-                    Expression.Constant(pi.PropertyType.GetElementType()!),
+                item => GetLambdaOrUseRuntimeArrays(
                     item,
+                    pi.PropertyType.GetElementType()!,
+                    pi,
                     binbuf,
+                    inst,
                     encoding,
                     deep)));
     }
@@ -214,14 +235,16 @@ internal static class GenerateSerializeLambda
     {
         if (Helper.IsNullable(pi.PropertyType))
         {
-            var pt = Nullable.GetUnderlyingType(pi.PropertyType);
+            var pt = Nullable.GetUnderlyingType(pi.PropertyType)!;
             return Helper.WriteNullableValueTypes(
                     inst,
                     pi.Name,
                     binbuf,
-                    Helper.CallBaseSerializeMethod(Expression.Constant(pt),
-                        Expression.PropertyOrField(inst, pi.Name),
+                    GetLambdaOrUseRuntime(
+                        pt,
+                        pi,
                         binbuf,
+                        inst,
                         encoding,
                         deep));
         }
@@ -231,11 +254,13 @@ internal static class GenerateSerializeLambda
             return Helper.WriteNotNullableObject(
                 binbuf,
                 PropertyFlags.NotNullValue,
-                Helper.CallBaseSerializeMethod(Expression.Constant(pt),
-                    Expression.PropertyOrField(inst, pi.Name),
-                    binbuf,
-                    encoding,
-                    deep));
+                GetLambdaOrUseRuntime(
+                        pt,
+                        pi,
+                        binbuf,
+                        inst,
+                        encoding,
+                        deep));
         }
     }
 
@@ -250,10 +275,71 @@ internal static class GenerateSerializeLambda
                     inst,
                     pi.Name,
                     binbuf,
-                    Helper.CallBaseSerializeMethod(Expression.Constant(pi.PropertyType),
-                        Expression.PropertyOrField(inst, pi.Name),
-                        binbuf,
-                        encoding,
+                    GetLambdaOrUseRuntime(
+                        pi.PropertyType, 
+                        pi, 
+                        binbuf, 
+                        inst, 
+                        encoding, 
                         deep));
+    }
+
+    private static Expression GetLambdaOrUseRuntime(
+        Type propType,
+        PropertyInfo pi,
+        Expression binbuf,
+        Expression inst,
+        Expression encoding,
+        Expression deep)
+    {
+        if(BinarySerializer._generationQueue.FirstOrDefault(x => x == propType) is null)
+        {
+            var lambda = BinarySerializer.GenerateLambdaFromTypeOrGetFromBuffer(propType).Serialize;
+            return Helper.CallSerializeLambda(
+                lambda,
+                Expression.PropertyOrField(inst, pi.Name),
+                binbuf,
+                encoding,
+                deep);
+        }
+        else
+        {
+            return Helper.CallBaseSerializeMethod(
+                Expression.Constant(propType), 
+                Expression.PropertyOrField(inst, pi.Name), 
+                binbuf, 
+                encoding, 
+                deep);
+        }
+    }
+
+    private static Expression GetLambdaOrUseRuntimeArrays(
+        Expression item,
+        Type propType,
+        PropertyInfo pi,
+        Expression binbuf,
+        Expression inst,
+        Expression encoding,
+        Expression deep)
+    {
+        if (BinarySerializer._generationQueue.FirstOrDefault(x => x == propType) is null)
+        {
+            var lambda = BinarySerializer.GenerateLambdaFromTypeOrGetFromBuffer(propType).Serialize;
+            return Helper.CallSerializeLambda(
+                lambda,
+                item,
+                binbuf,
+                encoding,
+                deep);
+        }
+        else
+        {
+            return Helper.CallBaseSerializeMethod(
+                Expression.Constant(propType),
+                item,
+                binbuf,
+                encoding,
+                deep);
+        }
     }
 }

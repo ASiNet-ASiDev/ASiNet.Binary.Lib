@@ -68,6 +68,12 @@ public static class Helper
     public static Expression CallBaseDeserializeMethod(Expression type, Expression buffer, Expression encoding) =>
         Expression.Call(typeof(BinarySerializer), nameof(BinarySerializer.BaseDeserialize), null, type, buffer, encoding);
 
+    public static Expression CallSerializeLambda(SerializeObjLambda lambda, Expression obj, Expression buffer, Expression encoding, Expression deep) =>
+        Expression.Invoke(Expression.Constant(lambda), Expression.Convert(obj, typeof(object)), buffer, encoding, deep);
+
+    public static Expression CallDeserializeLambda(DeserializeObjLambda lambda, Expression buffer, Expression encoding) =>
+        Expression.Invoke(Expression.Constant(lambda), buffer, encoding);
+
     public static Expression CallWriteFlagsMethod(Expression flags, Expression binbuf) =>
         Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.Write), null, binbuf, Expression.Convert(flags, typeof(byte)));
 

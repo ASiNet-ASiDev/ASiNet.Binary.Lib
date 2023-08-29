@@ -6,10 +6,24 @@ using ProtoBuf;
 using ProtoBuf.Serializers;
 using System.Text.Json;
 
+Span<byte> buf = stackalloc byte[short.MaxValue];
 
-BenchmarkRunner.Run<BinaryBufferSerializerTest>();
+var t = new GlobalSerializedTestObj();
+
+
+var s = BinarySerializer.Serialize(t, buf);
+
+
+var ds = BinarySerializer.Deserialize<GlobalSerializedTestObj>(buf);
+//BenchmarkRunner.Run<BinaryBufferSerializerTest>();
 
 Console.ReadLine();
+
+class T
+{
+    public int A {  get; set; }
+    public T? TT { get; set; }
+}
 
 [MemoryDiagnoser]
 public class BinaryBufferSerializerTest
