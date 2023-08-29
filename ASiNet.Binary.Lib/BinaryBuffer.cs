@@ -1,6 +1,4 @@
-﻿using System;
-using System.Text;
-using static System.Runtime.InteropServices.JavaScript.JSType;
+﻿using System.Text;
 
 namespace ASiNet.Binary.Lib;
 /// <summary>
@@ -31,11 +29,11 @@ public ref struct BinaryBuffer
     public readonly int FreeSpace => _area.Length - _writePosition;
 
     public int ReadPosition
-    { 
+    {
         get => _readPosition;
         set
         {
-            if(value < 0 || value >= _area.Length)
+            if (value < 0 || value >= _area.Length)
                 throw new IndexOutOfRangeException();
             _readPosition = value;
         }
@@ -44,7 +42,7 @@ public ref struct BinaryBuffer
     /// Позиция в которую будут записанные последующие данные.
     /// </summary>
     public int WritePosition
-    { 
+    {
         get => _writePosition;
         set
         {
@@ -81,7 +79,7 @@ public ref struct BinaryBuffer
     {
         try
         {
-            if(count > _buffer.Length)
+            if (count > _buffer.Length)
                 return false;
             _buffer.Clear();
             var data = _area.Slice(_readPosition, count);

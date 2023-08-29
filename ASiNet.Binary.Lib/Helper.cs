@@ -1,12 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Linq;
-using System.Linq.Expressions;
+﻿using System.Linq.Expressions;
 using System.Reflection;
-using System.Runtime.CompilerServices;
-using System.Text;
-using System.Threading.Tasks;
 using ASiNet.Binary.Lib.Enums;
 using ASiNet.Binary.Lib.Expressions.BaseTypes;
 using ASiNet.Binary.Lib.Serializer;
@@ -56,7 +49,7 @@ public static class Helper
     public static bool IsNullable(Type type)
         => Nullable.GetUnderlyingType(type) != null;
 
-    public static Expression NullableHashValue(Expression input) => 
+    public static Expression NullableHashValue(Expression input) =>
         Expression.PropertyOrField(input, nameof(Nullable<byte>.HasValue));
 
     public static Expression CallEnumHashFlag(Expression instEnum, Expression flags) =>
@@ -77,7 +70,7 @@ public static class Helper
     public static Expression CallWriteFlagsMethod(Expression flags, Expression binbuf) =>
         Expression.Call(typeof(BinaryBufferBaseTypes), nameof(BinaryBufferBaseTypes.Write), null, binbuf, Expression.Convert(flags, typeof(byte)));
 
-    public static Expression IfHashFlag(Expression enumInst, Expression flag, Expression ifTrue, Expression? ifFalse = null) => ifFalse is null ? 
+    public static Expression IfHashFlag(Expression enumInst, Expression flag, Expression ifTrue, Expression? ifFalse = null) => ifFalse is null ?
         Expression.IfThen(CallEnumHashFlag(enumInst, flag), ifTrue) :
         Expression.IfThenElse(CallEnumHashFlag(enumInst, flag), ifTrue, ifFalse);
 
@@ -96,23 +89,23 @@ public static class Helper
     public static Expression GetCollectionLength(Expression array) =>
         Expression.PropertyOrField(array, nameof(Collection.Count));
 
-    public static Expression GetArrayLength(PropertyInfo pi, Expression inst) 
+    public static Expression GetArrayLength(PropertyInfo pi, Expression inst)
         => GetArrayLength(Expression.PropertyOrField(inst, pi.Name));
-    
-    public static Expression GetCollectionLength(PropertyInfo pi, Expression inst) 
+
+    public static Expression GetCollectionLength(PropertyInfo pi, Expression inst)
         => GetCollectionLength(Expression.PropertyOrField(inst, pi.Name));
 
     public static Expression WriteNullableValueTypes(
-        Expression inst, 
-        string propName, 
-        Expression binbuf, 
-        Expression isNotNullWriteMethod, 
-        PropertyFlags isNotNullFlag = PropertyFlags.NotNullValue, 
-        PropertyFlags isNullFlag = PropertyFlags.None) => 
+        Expression inst,
+        string propName,
+        Expression binbuf,
+        Expression isNotNullWriteMethod,
+        PropertyFlags isNotNullFlag = PropertyFlags.NotNullValue,
+        PropertyFlags isNullFlag = PropertyFlags.None) =>
         Expression.IfThenElse(
             NullableHashValue(Expression.PropertyOrField(inst, propName)),
             Expression.Block(
-                CallWriteFlagsMethod(Expression.Constant(isNotNullFlag), binbuf), 
+                CallWriteFlagsMethod(Expression.Constant(isNotNullFlag), binbuf),
                 isNotNullWriteMethod),
             CallWriteFlagsMethod(Expression.Constant(isNullFlag), binbuf));
 
@@ -149,10 +142,10 @@ public static class Helper
             Expression.Block(
                 CallWriteFlagsMethod(Expression.Constant(isNotNullFlag), binbuf),
                 Expression.Call(
-                    typeof(BinaryBufferBaseTypes), 
-                    nameof(BinaryBufferBaseTypes.Write), 
-                    null, 
-                    binbuf, 
+                    typeof(BinaryBufferBaseTypes),
+                    nameof(BinaryBufferBaseTypes.Write),
+                    null,
+                    binbuf,
                     GetArrayLength(Expression.PropertyOrField(inst, propName))),
                 isNotNullWriteMethod),
             CallWriteFlagsMethod(Expression.Constant(isNullFlag), binbuf));
@@ -175,7 +168,7 @@ public static class Helper
     {
         var ret = Expression.Label(typeof(int), "ret");
 
-        if(i is not null)
+        if (i is not null)
         {
             var loopBody = Expression.Block(
             Expression.IfThenElse(
@@ -199,7 +192,7 @@ public static class Helper
                 Expression.Break(ret, p)),
             Expression.PostIncrementAssign(p));
 
-            var loop = Expression.Block(new ParameterExpression[] { p }, 
+            var loop = Expression.Block(new ParameterExpression[] { p },
                 Expression.Assign(p, Expression.Constant(0)),
                 Expression.Loop(loopBody, ret));
 

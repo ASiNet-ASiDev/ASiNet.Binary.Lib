@@ -1,15 +1,8 @@
-﻿using ASiNet.Binary.Lib.Enums;
-using ASiNet.Binary.Lib.Expressions.Arrays;
-using ASiNet.Binary.Lib.Expressions.BaseTypes;
-using ASiNet.Binary.Lib.Serializer.Attributes;
-using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Linq;
-using System.Linq.Expressions;
+﻿using System.Linq.Expressions;
 using System.Reflection;
 using System.Text;
-using System.Threading.Tasks;
+using ASiNet.Binary.Lib.Enums;
+using ASiNet.Binary.Lib.Serializer.Attributes;
 
 namespace ASiNet.Binary.Lib.Serializer;
 internal static class GenerateSerializeLambda
@@ -72,23 +65,23 @@ internal static class GenerateSerializeLambda
 
         foreach (var property in data)
         {
-            if(property.GetCustomAttribute<IgnorePropertyAttribute>() is not null)
+            if (property.GetCustomAttribute<IgnorePropertyAttribute>() is not null)
                 continue;
             if (!property.CanRead)
                 throw new Exception($"Property '{property.Name}' does not have getter!");
 
             var pt = Helper.IsNullable(property.PropertyType) ? Nullable.GetUnderlyingType(property.PropertyType)! : property.PropertyType;
 
-            if(pt == typeof(object))
+            if (pt == typeof(object))
                 throw new NotImplementedException($"'{nameof(Object)}' Type is not supported!");
-       
+
             if (pt.IsPrimitive)
                 result.Add(SerializePrimitivesProperty(property, binbuf, inst, encoding, deep));
             else if (pt.IsEnum)
                 result.Add(SerializeEnumProperty(property, binbuf, inst, encoding, deep));
-            else if(pt.IsArray)
+            else if (pt.IsArray)
                 result.Add(SerializeArray(property, binbuf, inst, encoding, deep));
-            else if(pt.IsValueType)
+            else if (pt.IsValueType)
                 result.Add(SerializeValueType(property, binbuf, inst, encoding, deep));
             else
                 result.Add(SerializeObject(property, binbuf, inst, encoding, deep));
@@ -119,16 +112,16 @@ internal static class GenerateSerializeLambda
                 binbuf,
                 PropertyFlags.NotNullValue,
                 Helper.CallWriteMethod(
-                    Expression.Convert(inst, et), 
+                    Expression.Convert(inst, et),
                     binbuf));
         }
     }
 
     internal static Expression SerializeEnumProperty(
-        PropertyInfo pi, 
-        Expression binbuf, 
-        Expression inst, 
-        Expression encoding, 
+        PropertyInfo pi,
+        Expression binbuf,
+        Expression inst,
+        Expression encoding,
         Expression deep)
     {
         if (Helper.IsNullable(pi.PropertyType))
@@ -136,8 +129,8 @@ internal static class GenerateSerializeLambda
             var et = Nullable.GetUnderlyingType(pi.PropertyType)!.GetEnumUnderlyingType()!;
 
             return Helper.WriteNullableValueTypes(
-                    inst, 
-                    pi.Name, 
+                    inst,
+                    pi.Name,
                     binbuf,
                     GetLambdaOrUseRuntime(
                         et,
@@ -145,13 +138,13 @@ internal static class GenerateSerializeLambda
                         binbuf,
                         inst,
                         encoding,
-                        deep));   
+                        deep));
         }
         else
         {
             var et = pi.PropertyType.GetEnumUnderlyingType()!;
             return Helper.WriteNotNullableObject(
-                binbuf, 
+                binbuf,
                 PropertyFlags.NotNullValue,
                 GetLambdaOrUseRuntime(
                         et,
@@ -164,9 +157,9 @@ internal static class GenerateSerializeLambda
     }
 
     internal static Expression SerializePrimitivesProperty(
-        PropertyInfo pi, 
-        Expression binbuf, 
-        Expression inst, 
+        PropertyInfo pi,
+        Expression binbuf,
+        Expression inst,
         Expression encoding,
         Expression deep)
     {
@@ -215,7 +208,7 @@ internal static class GenerateSerializeLambda
             pi.Name,
             binbuf,
             Helper.ForeachGetArray(
-                Expression.PropertyOrField(inst, pi.Name), 
+                Expression.PropertyOrField(inst, pi.Name),
                 item => GetLambdaOrUseRuntimeArrays(
                     item,
                     pi.PropertyType.GetElementType()!,
@@ -276,11 +269,11 @@ internal static class GenerateSerializeLambda
                     pi.Name,
                     binbuf,
                     GetLambdaOrUseRuntime(
-                        pi.PropertyType, 
-                        pi, 
-                        binbuf, 
-                        inst, 
-                        encoding, 
+                        pi.PropertyType,
+                        pi,
+                        binbuf,
+                        inst,
+                        encoding,
                         deep));
     }
 
@@ -292,7 +285,7 @@ internal static class GenerateSerializeLambda
         Expression encoding,
         Expression deep)
     {
-        if(BinarySerializer._generationQueue.FirstOrDefault(x => x == propType) is null)
+        if (BinarySerializer._generationQueue.FirstOrDefault(x => x == propType) is null)
         {
             var lambda = BinarySerializer.GenerateLambdaFromTypeOrGetFromBuffer(propType).Serialize;
             return Helper.CallSerializeLambda(
@@ -305,10 +298,10 @@ internal static class GenerateSerializeLambda
         else
         {
             return Helper.CallBaseSerializeMethod(
-                Expression.Constant(propType), 
-                Expression.PropertyOrField(inst, pi.Name), 
-                binbuf, 
-                encoding, 
+                Expression.Constant(propType),
+                Expression.PropertyOrField(inst, pi.Name),
+                binbuf,
+                encoding,
                 deep);
         }
     }

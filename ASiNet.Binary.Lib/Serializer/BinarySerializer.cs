@@ -1,7 +1,6 @@
-﻿using ASiNet.Binary.Lib.Exceptions;
+﻿using System.Text;
+using ASiNet.Binary.Lib.Exceptions;
 using ASiNet.Binary.Lib.Expressions.BaseTypes;
-using System.Linq.Expressions;
-using System.Text;
 
 namespace ASiNet.Binary.Lib.Serializer;
 
@@ -38,7 +37,7 @@ public static class BinarySerializer
     {
         try
         {
-            if(obj is null)
+            if (obj is null)
                 return 0;
             var type = typeof(T);
             encoding ??= Encoding.UTF8;
@@ -190,8 +189,8 @@ public static class BinarySerializer
 
     private static IEnumerable<(string TypeName, DeserializeObjLambda Deserialize, SerializeObjLambda Serialize)> GenerateBaseTypesSD()
     {
-        yield return (typeof(sbyte).FullName!, 
-            (BinaryBuffer buffer, Encoding encoding) => buffer.ReadSByte(), 
+        yield return (typeof(sbyte).FullName!,
+            (BinaryBuffer buffer, Encoding encoding) => buffer.ReadSByte(),
             (object obj, BinaryBuffer buffer, Encoding encoding, ushort deep) => buffer.Write((sbyte)obj));
 
         yield return (typeof(byte).FullName!,

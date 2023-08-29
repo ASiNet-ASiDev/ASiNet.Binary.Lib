@@ -1,9 +1,5 @@
-﻿using ASiNet.Binary.Lib.Expressions.BaseTypes;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Text;
+using ASiNet.Binary.Lib.Expressions.BaseTypes;
 
 namespace ASiNet.Binary.Lib.Expressions.Arrays;
 public static class BinaryBufferArrays
@@ -135,7 +131,7 @@ public static class BinaryBufferArrays
         buffer.Write(array.Length);
         foreach (var item in array)
         {
-            buffer.Write((Enum)item);
+            buffer.Write(item);
         }
         return true;
     }

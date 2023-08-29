@@ -1,13 +1,8 @@
-﻿using ASiNet.Binary.Lib.Enums;
-using ASiNet.Binary.Lib.Expressions.Arrays;
-using ASiNet.Binary.Lib.Expressions.BaseTypes;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Linq.Expressions;
+﻿using System.Linq.Expressions;
 using System.Reflection;
 using System.Text;
-using System.Threading.Tasks;
+using ASiNet.Binary.Lib.Enums;
+using ASiNet.Binary.Lib.Expressions.BaseTypes;
 
 namespace ASiNet.Binary.Lib.Serializer;
 internal class GenerateDeserializeLambda
@@ -88,7 +83,7 @@ internal class GenerateDeserializeLambda
             else if (pt.IsEnum)
                 result.Add(DeserializeEnumProperty(pt, property, enumInst, binbuf, inst, encoding));
 
-            else if(pt.IsArray)
+            else if (pt.IsArray)
                 result.Add(DeserializeArrayProperty(pt, property, enumInst, binbuf, inst, encoding));
             else
                 result.Add(DeserializeObjectProperty(pt, property, enumInst, binbuf, inst, encoding));
@@ -98,9 +93,9 @@ internal class GenerateDeserializeLambda
     }
 
     private static Expression DeserializeEnum(
-        Type type, 
-        ParameterExpression binbuf, 
-        ParameterExpression inst, 
+        Type type,
+        ParameterExpression binbuf,
+        ParameterExpression inst,
         ParameterExpression encoding)
     {
         var ut = type.GetEnumUnderlyingType()!;
@@ -119,7 +114,7 @@ internal class GenerateDeserializeLambda
                                 GetLambdaOrUseRuntime(
                                         ut,
                                         binbuf,
-                                            encoding), ut), 
+                                            encoding), ut),
                             type)
                         )
                     )
@@ -127,30 +122,30 @@ internal class GenerateDeserializeLambda
     }
 
     internal static Expression DeserializeEnumProperty(
-        Type propType, 
-        PropertyInfo pi, 
-        ParameterExpression enumInstanse, 
-        Expression binbuf, 
-        Expression inst, 
+        Type propType,
+        PropertyInfo pi,
+        ParameterExpression enumInstanse,
+        Expression binbuf,
+        Expression inst,
         Expression encoding)
     {
         var ut = propType.GetEnumUnderlyingType()!;
         return Expression.Block(new[] { enumInstanse },
                 Expression.Assign(
-                    enumInstanse, 
+                    enumInstanse,
                     Helper.CallReadFlagsMethod(binbuf)),
                 Helper.IfHashFlag(
-                    enumInstanse, 
-                    Expression.Constant(PropertyFlags.NotNullValue), 
+                    enumInstanse,
+                    Expression.Constant(PropertyFlags.NotNullValue),
                     Expression.Assign(
                         Expression.PropertyOrField(inst, pi.Name),
                         Expression.Convert(
                             Expression.Convert(
                                 GetLambdaOrUseRuntime(
-                                    ut, 
-                                    binbuf, 
-                                    encoding), 
-                                propType), 
+                                    ut,
+                                    binbuf,
+                                    encoding),
+                                propType),
                             pi.PropertyType)
                         )
                     )
@@ -158,28 +153,28 @@ internal class GenerateDeserializeLambda
     }
 
     internal static Expression DeserializePrimitivesProperty(
-        Type propType, 
-        PropertyInfo pi, 
-        ParameterExpression enumInstanse, 
-        Expression binbuf, 
-        Expression inst, 
+        Type propType,
+        PropertyInfo pi,
+        ParameterExpression enumInstanse,
+        Expression binbuf,
+        Expression inst,
         Expression encoding)
     {
         return Expression.Block(new[] { enumInstanse },
                 Expression.Assign(
-                    enumInstanse, 
+                    enumInstanse,
                     Helper.CallReadFlagsMethod(binbuf)),
                 Helper.IfHashFlag(
-                    enumInstanse, 
+                    enumInstanse,
                     Expression.Constant(
                         PropertyFlags.NotNullValue),
                     Expression.Assign(
                         Expression.PropertyOrField(inst, pi.Name),
                         Expression.Convert(
                             GetLambdaOrUseRuntime(
-                                propType, 
-                                binbuf, 
-                                encoding), 
+                                propType,
+                                binbuf,
+                                encoding),
                             pi.PropertyType)
                         )
                     )
@@ -222,11 +217,11 @@ internal class GenerateDeserializeLambda
                         ),
 
                     Helper.ForeachSetArray(
-                        array, 
+                        array,
                         Expression.Convert(
                             GetLambdaOrUseRuntime(
                                 et,
-                                binbuf, 
+                                binbuf,
                                 encoding),
                             et)
                         ),

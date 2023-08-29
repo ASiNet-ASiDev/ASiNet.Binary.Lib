@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using static System.Runtime.InteropServices.JavaScript.JSType;
+﻿using System.Text;
 
 namespace ASiNet.Binary.Lib.Expressions.BaseTypes;
 public static class BinaryBufferBaseTypes
@@ -114,7 +109,7 @@ public static class BinaryBufferBaseTypes
     {
         var size = encoding.GetByteCount(value);
 
-        if(size + sizeof(int) > self.FreeSpace)
+        if (size + sizeof(int) > self.FreeSpace)
             return false;
 
         var sizeT = self.Write(size);
@@ -141,10 +136,10 @@ public static class BinaryBufferBaseTypes
 
         if (etype == typeof(ushort))
             return Write(self, (ushort)(object)value);
-        
+
         if (etype == typeof(uint))
             return Write(self, (uint)(object)value);
-        
+
         if (etype == typeof(ulong))
             return Write(self, (ulong)(object)value);
 
@@ -263,7 +258,7 @@ public static class BinaryBufferBaseTypes
         var strBuff = new Span<byte>(new byte[size]);
 
         self.ReadToSpan(strBuff);
-        
+
         var str = encoding.GetString(strBuff);
         return str;
     }
@@ -282,14 +277,14 @@ public static class BinaryBufferBaseTypes
             return Helper.ToEnum<short, TEnum>(ReadInt16(self));
 
         if (etype == typeof(long))
-            return Helper.ToEnum<long, TEnum>(ReadInt64(self));        
-        
+            return Helper.ToEnum<long, TEnum>(ReadInt64(self));
+
         if (etype == typeof(ushort))
             return Helper.ToEnum<ushort, TEnum>(ReadUInt16(self));
-       
+
         if (etype == typeof(uint))
             return Helper.ToEnum<uint, TEnum>(ReadUInt32(self));
-        
+
         if (etype == typeof(ulong))
             return Helper.ToEnum<ulong, TEnum>(ReadUInt64(self));
 
