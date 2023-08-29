@@ -78,10 +78,13 @@ namespace ASiNet.Binary.Lib.Serializer.Tests
         {
             var raw = new Gn<Gn<Gn<int>>>()
             {
+                Trr = 10,
                 Value = new() 
-                { 
+                {
+                    Trr = 433,
                     Value = new()
-                    { 
+                    {
+                        Trr = 53333,
                         Value = 10
                     }
                 }
@@ -330,6 +333,8 @@ namespace ASiNet.Binary.Lib.Serializer.Tests
 class Gn<T>
 {
     public T Value { get; set; }
+
+    public int Trr { get; set; }
 }
 
 struct A

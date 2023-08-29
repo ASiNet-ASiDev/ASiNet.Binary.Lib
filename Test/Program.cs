@@ -3,6 +3,7 @@ using ASiNet.Binary.Lib.Serializer;
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Running;
 using ProtoBuf;
+using ProtoBuf.Serializers;
 using System.Text.Json;
 
 

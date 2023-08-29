@@ -9,6 +9,15 @@ public delegate object DeserializeObjLambda(BinaryBuffer buffer, Encoding encodi
 public delegate void SerializeObjLambda(object obj, BinaryBuffer buffer, Encoding encoding, ushort deep);
 public static class BinarySerializer
 {
+
+    static BinarySerializer()
+    {
+        foreach (var item in GenerateBaseTypesSD())
+        {
+            _buffer.Add(item.TypeName, (item.Deserialize, item.Serialize));
+        }
+    }
+
     private static Dictionary<string, (DeserializeObjLambda Deserialize, SerializeObjLambda Serialize)> _buffer = new();
 
     public static ushort MaxSerializeDepth { get; set; } = 16;
@@ -36,7 +45,7 @@ public static class BinarySerializer
             Span<byte> buf = stackalloc byte[sizeof(decimal)];
             var bb = new BinaryBuffer(buffer, buf, ref w, ref r);
 
-            var result = SerializeBaseTypes(type, obj, bb, encoding) ? true : BaseSerialize(type, obj!, bb, encoding, 0);
+            var result = BaseSerialize(type, obj!, bb, encoding, 0);
 
             if (result)
             {
@@ -74,7 +83,7 @@ public static class BinarySerializer
             Span<byte> buf = stackalloc byte[sizeof(decimal)];
             var bb = new BinaryBuffer(buffer, buf, ref w, ref r);
 
-            var result = SerializeBaseTypes(type, obj, bb, encoding) ? true : BaseSerialize(type, obj, bb, encoding, 0);
+            var result = BaseSerialize(type, obj, bb, encoding, 0);
             if (result)
             {
                 return bb.WritePosition;
@@ -111,10 +120,6 @@ public static class BinarySerializer
             Span<byte> buf = stackalloc byte[sizeof(decimal)];
             var bb = new BinaryBuffer(buffer, buf, ref w, ref r);
 
-            var dbt = DeserializeBaseTypes(type, bb, encoding);
-
-            if(dbt.IsPrimitiveType)
-                return (T?)dbt.Obj;
             return (T?)BaseDeserialize(type, bb, encoding);
         }
         catch (Exception ex)
@@ -142,10 +147,6 @@ public static class BinarySerializer
             Span<byte> buf = stackalloc byte[sizeof(decimal)];
             var bb = new BinaryBuffer(buffer, buf, ref w, ref r);
 
-            var dbt = DeserializeBaseTypes(type, bb, encoding);
-
-            if (dbt.IsPrimitiveType)
-                return dbt.Obj;
             return BaseDeserialize(type, bb, encoding);
         }
         catch (Exception ex)
@@ -156,8 +157,6 @@ public static class BinarySerializer
 
     internal static bool BaseSerialize(Type type, in object obj, BinaryBuffer buffer, Encoding encoding, ushort deep)
     {
-
-
         deep++;
         if (deep > MaxSerializeDepth)
             throw new Exception("Превышена максимальная глубина сериализации!");
@@ -186,72 +185,68 @@ public static class BinarySerializer
         return (deserialize, serialize);
     }
 
-    private static bool SerializeBaseTypes(Type type, in object obj, BinaryBuffer buffer, Encoding encoding)
+    private static IEnumerable<(string TypeName, DeserializeObjLambda Deserialize, SerializeObjLambda Serialize)> GenerateBaseTypesSD()
     {
-        var result = false;
-        if(type.IsPrimitive)
-        {
-            result = type.Name switch
-            {
-                nameof(SByte) => buffer.Write((sbyte)obj),
-                nameof(Byte) => buffer.Write((byte)obj),
-                nameof(Single) => buffer.Write((float)obj),
-                nameof(Double) => buffer.Write((double)obj),
-                nameof(Boolean) => buffer.Write((bool)obj),
-                nameof(Int16) => buffer.Write((short)obj),
-                nameof(UInt16) => buffer.Write((ushort)obj),
-                nameof(Int32) => buffer.Write((int)obj),
-                nameof(UInt32) => buffer.Write((uint)obj),
-                nameof(Int64) => buffer.Write((long)obj),
-                nameof(UInt64) => buffer.Write((ulong)obj),
-                nameof(Char) => buffer.Write((char)obj),
-                _ => false,
-            };
-        }
-        else if(obj is string str)
-            result = buffer.Write(str, encoding);
-        else if (obj is DateTime dt)
-            result = buffer.Write(dt);
-        else if (obj is Guid guid)
-            result = buffer.Write(guid);
+        yield return (typeof(sbyte).FullName!, 
+            (BinaryBuffer buffer, Encoding encoding) => buffer.ReadSByte(), 
+            (object obj, BinaryBuffer buffer, Encoding encoding, ushort deep) => buffer.Write((sbyte)obj));
 
-        return result;
+        yield return (typeof(byte).FullName!,
+            (BinaryBuffer buffer, Encoding encoding) => buffer.ReadByte(),
+            (object obj, BinaryBuffer buffer, Encoding encoding, ushort deep) => buffer.Write((byte)obj));
+
+        yield return (typeof(float).FullName!,
+            (BinaryBuffer buffer, Encoding encoding) => buffer.ReadSingle(),
+            (object obj, BinaryBuffer buffer, Encoding encoding, ushort deep) => buffer.Write((float)obj));
+
+        yield return (typeof(double).FullName!,
+            (BinaryBuffer buffer, Encoding encoding) => buffer.ReadDouble(),
+            (object obj, BinaryBuffer buffer, Encoding encoding, ushort deep) => buffer.Write((double)obj));
+
+        yield return (typeof(bool).FullName!,
+            (BinaryBuffer buffer, Encoding encoding) => buffer.ReadBoolean(),
+            (object obj, BinaryBuffer buffer, Encoding encoding, ushort deep) => buffer.Write((bool)obj));
+
+        yield return (typeof(short).FullName!,
+            (BinaryBuffer buffer, Encoding encoding) => buffer.ReadInt16(),
+            (object obj, BinaryBuffer buffer, Encoding encoding, ushort deep) => buffer.Write((short)obj));
+
+        yield return (typeof(ushort).FullName!,
+            (BinaryBuffer buffer, Encoding encoding) => buffer.ReadUInt16(),
+            (object obj, BinaryBuffer buffer, Encoding encoding, ushort deep) => buffer.Write((ushort)obj));
+
+        yield return (typeof(int).FullName!,
+            (BinaryBuffer buffer, Encoding encoding) => buffer.ReadInt32(),
+            (object obj, BinaryBuffer buffer, Encoding encoding, ushort deep) => buffer.Write((int)obj));
+
+        yield return (typeof(uint).FullName!,
+            (BinaryBuffer buffer, Encoding encoding) => buffer.ReadUInt32(),
+            (object obj, BinaryBuffer buffer, Encoding encoding, ushort deep) => buffer.Write((uint)obj));
+
+        yield return (typeof(long).FullName!,
+            (BinaryBuffer buffer, Encoding encoding) => buffer.ReadInt64(),
+            (object obj, BinaryBuffer buffer, Encoding encoding, ushort deep) => buffer.Write((long)obj));
+
+        yield return (typeof(ulong).FullName!,
+            (BinaryBuffer buffer, Encoding encoding) => buffer.ReadUInt64(),
+            (object obj, BinaryBuffer buffer, Encoding encoding, ushort deep) => buffer.Write((ulong)obj));
+
+        yield return (typeof(char).FullName!,
+            (BinaryBuffer buffer, Encoding encoding) => buffer.ReadChar(),
+            (object obj, BinaryBuffer buffer, Encoding encoding, ushort deep) => buffer.Write((char)obj));
+
+        yield return (typeof(string).FullName!,
+            (BinaryBuffer buffer, Encoding encoding) => buffer.ReadString(encoding),
+            (object obj, BinaryBuffer buffer, Encoding encoding, ushort deep) => buffer.Write((string)obj, encoding));
+
+        yield return (typeof(DateTime).FullName!,
+            (BinaryBuffer buffer, Encoding encoding) => buffer.ReadDateTime(),
+            (object obj, BinaryBuffer buffer, Encoding encoding, ushort deep) => buffer.Write((DateTime)obj));
+
+        yield return (typeof(Guid).FullName!,
+            (BinaryBuffer buffer, Encoding encoding) => buffer.ReadGuid(),
+            (object obj, BinaryBuffer buffer, Encoding encoding, ushort deep) => buffer.Write((Guid)obj));
+
+
     }
-
-    private static (object? Obj, bool IsPrimitiveType) DeserializeBaseTypes(Type type, BinaryBuffer buffer, Encoding encoding)
-    {
-        object? result = null;
-        var isPt = true;
-        if (type.IsPrimitive)
-        {
-            result = type.Name switch
-            {
-                nameof(SByte) => buffer.ReadSByte(),
-                nameof(Byte) => buffer.ReadByte(),
-                nameof(Single) => buffer.ReadSingle(),
-                nameof(Double) => buffer.ReadDouble(),
-                nameof(Boolean) => buffer.ReadBoolean(),
-                nameof(Int16) => buffer.ReadInt16(),
-                nameof(UInt16) => buffer.ReadUInt16(),
-                nameof(Int32) => buffer.ReadInt32(),
-                nameof(UInt32) => buffer.ReadUInt32(),
-                nameof(Int64) => buffer.ReadInt64(),
-                nameof(UInt64) => buffer.ReadUInt64(),
-                nameof(Char) => buffer.ReadChar(),
-                _ => false,
-            };
-        }
-        else if (type == typeof(string))
-            result = buffer.ReadString(encoding);
-        else if (type == typeof(DateTime))
-            result = buffer.ReadDateTime();
-        else if (type == typeof(Guid))
-            result = buffer.ReadGuid();
-        else
-            isPt = false;
-
-        return (result, isPt);
-    }
-
-
 }
