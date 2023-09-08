@@ -3,6 +3,7 @@ using System.Reflection;
 using System.Text;
 using ASiNet.Binary.Lib.Enums;
 using ASiNet.Binary.Lib.Expressions.BaseTypes;
+using ASiNet.Binary.Lib.Serializer.Attributes;
 
 namespace ASiNet.Binary.Lib.Serializer;
 internal class GenerateDeserializeLambda
@@ -61,7 +62,7 @@ internal class GenerateDeserializeLambda
     {
         var result = new List<Expression>();
 
-        var data = type.GetProperties().ToList();
+        var data = type.GetProperties().Where(x => x.GetCustomAttribute<IgnorePropertyAttribute>() is null).ToList();
 
         data.Sort((x, y) => StringComparer.OrdinalIgnoreCase.Compare(x.Name, y.Name));
 

@@ -1,5 +1,6 @@
 ﻿using ASiNet.Binary.Lib;
 using ASiNet.Binary.Lib.Serializer;
+using ASiNet.Binary.Lib.Serializer.Attributes;
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Running;
 using ProtoBuf;
@@ -8,19 +9,21 @@ using System.Text.Json;
 
 Span<byte> buf = stackalloc byte[short.MaxValue];
 
-var t = new GlobalSerializedTestObj();
+var t = new T() { Value = 2222 };
 
 
 var s = BinarySerializer.Serialize(t, buf);
 
 
-var ds = BinarySerializer.Deserialize<GlobalSerializedTestObj>(buf);
+var ds = BinarySerializer.Deserialize<T>(buf);
 //BenchmarkRunner.Run<BinaryBufferSerializerTest>();
 
 Console.ReadLine();
 
 class T
 {
+    [IgnoreProperty] 
+    public int Value { get; set; }
     public int A {  get; set; }
     public T? TT { get; set; }
 }

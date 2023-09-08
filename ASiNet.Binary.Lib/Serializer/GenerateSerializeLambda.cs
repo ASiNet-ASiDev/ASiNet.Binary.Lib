@@ -57,7 +57,7 @@ internal static class GenerateSerializeLambda
 
     private static List<Expression> SerializeObject(Type type, Expression binbuf, Expression inst, Expression encoding, Expression deep)
     {
-        var data = type.GetProperties().ToList();
+        var data = type.GetProperties().Where(x => x.GetCustomAttribute<IgnorePropertyAttribute>() is null).ToList();
 
         var result = new List<Expression>(data.Count);
 
@@ -65,8 +65,6 @@ internal static class GenerateSerializeLambda
 
         foreach (var property in data)
         {
-            if (property.GetCustomAttribute<IgnorePropertyAttribute>() is not null)
-                continue;
             if (!property.CanRead)
                 throw new Exception($"Property '{property.Name}' does not have getter!");
 
