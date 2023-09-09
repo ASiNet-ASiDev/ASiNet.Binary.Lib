@@ -61,11 +61,11 @@ public ref struct BinaryBuffer
     public void ClearBuffer() => _buffer.Clear();
     public Span<byte> GetBuffer() => _buffer;
 
-    public bool WriteBuffer(ushort count)
+    public bool WriteBuffer(int count)
     {
         var offset = _writePosition + count;
         if (offset > _area.Length)
-            return false;
+            throw new IndexOutOfRangeException();
 
         for (int i = 0; i < count; i++)
             _area[_writePosition + i] = _buffer[i];
@@ -75,12 +75,12 @@ public ref struct BinaryBuffer
         return true;
     }
 
-    public bool ReadToBuffer(ushort count)
+    public bool ReadToBuffer(int count)
     {
         try
         {
             if (count > _buffer.Length)
-                return false;
+                throw new IndexOutOfRangeException();
             _buffer.Clear();
             var data = _area.Slice(_readPosition, count);
             data.CopyTo(_buffer);
@@ -96,8 +96,8 @@ public ref struct BinaryBuffer
     public bool WriteSpan(Span<byte> data)
     {
         var offset = _writePosition + data.Length;
-        if (offset > FreeSpace)
-            return false;
+        if (offset > _area.Length)
+            throw new IndexOutOfRangeException();
 
         for (int i = 0; i < data.Length; i++)
             _area[_writePosition + i] = data[i];
@@ -108,8 +108,8 @@ public ref struct BinaryBuffer
     public bool WriteMemory(Memory<byte> value)
     {
         var offset = _writePosition + value.Length;
-        if (offset > FreeSpace)
-            return false;
+        if (offset > _area.Length)
+            throw new IndexOutOfRangeException();
         var data = value.Span;
 
         for (int i = 0; i < data.Length; i++)
@@ -121,8 +121,8 @@ public ref struct BinaryBuffer
     public bool WriteSpan(ReadOnlySpan<byte> data)
     {
         var offset = _writePosition + data.Length;
-        if (offset > FreeSpace)
-            return false;
+        if (offset > _area.Length)
+            throw new IndexOutOfRangeException();
 
         for (int i = 0; i < data.Length; i++)
             _area[_writePosition + i] = data[i];
@@ -134,8 +134,8 @@ public ref struct BinaryBuffer
     {
         var size = encoding.GetByteCount(data);
         var offset = _writePosition + size;
-        if (offset > FreeSpace)
-            return false;
+        if (offset > _area.Length)
+            throw new IndexOutOfRangeException();
 
         Span<byte> buffer = stackalloc byte[size];
         encoding.GetBytes(data, buffer);

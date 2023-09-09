@@ -6,7 +6,7 @@
     <Nullable>enable</Nullable>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <Title>$(AssemblyName)</Title>
-    <Version>2.0.0</Version>
+    <Version>2.0.1</Version>
     <Authors>ASiDev</Authors>
     <Description>BinarySerializer, Supports basic types, arrays, generic types, as well as recursive types!</Description>
     <Copyright>MIT</Copyright>

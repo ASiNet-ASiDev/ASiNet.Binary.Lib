@@ -16,7 +16,7 @@ internal class GenerateDeserializeLambda
 
             var bb = typeof(BinaryBuffer);
 
-            NewExpression inst = Expression.New(type);
+            Expression inst = type.IsArray ? Expression.Constant(null, type) : Expression.New(type);
 
             var binbufParameter = Expression.Parameter(bb);
             var encodingParameter = Expression.Parameter(typeof(Encoding));
@@ -40,6 +40,8 @@ internal class GenerateDeserializeLambda
             // SET_PRORERTIES
             if (type.IsEnum)
                 body.Add(DeserializeEnum(type, binbufVar, instVar, encodingVar));
+            else if(type.IsArray)
+                body.Add(DeserializeArray(type, binbufVar, instVar, encodingVar));
             else
                 body.AddRange(DeserializeProperties(type, binbufVar, instVar, encodingVar));
 
@@ -83,9 +85,6 @@ internal class GenerateDeserializeLambda
 
             else if (pt.IsEnum)
                 result.Add(DeserializeEnumProperty(pt, property, enumInst, binbuf, inst, encoding));
-
-            else if (pt.IsArray)
-                result.Add(DeserializeArrayProperty(pt, property, enumInst, binbuf, inst, encoding));
             else
                 result.Add(DeserializeObjectProperty(pt, property, enumInst, binbuf, inst, encoding));
         }
@@ -120,6 +119,56 @@ internal class GenerateDeserializeLambda
                         )
                     )
                 );
+    }
+
+    private static Expression DeserializeArray(
+        Type type,
+        ParameterExpression binbuf,
+        ParameterExpression inst,
+        ParameterExpression encoding)
+    {
+        var enumInst = Expression.Variable(typeof(PropertyFlags), $"arr_flag");
+        var array = Expression.Variable(type);
+
+        var et = type.GetElementType()!;
+
+        return Expression.Block(new[] { enumInst },
+
+            Expression.Assign(
+                enumInst,
+                Helper.CallReadFlagsMethod(binbuf)),
+
+            Helper.IfHashFlag(
+                enumInst,
+                Expression.Constant(
+                    PropertyFlags.NotNullValue),
+
+                Expression.Block(new[] { array },
+                    Expression.Assign(
+                        array,
+                        Expression.NewArrayBounds(
+                            et,
+                            Helper.CallReadMethod(
+                                binbuf,
+                                nameof(BinaryBufferBaseTypes.ReadInt32)
+                                )
+                            )
+                        ),
+
+                    Helper.ForeachSetArray(
+                        array,
+                        Expression.Convert(
+                            GetLambdaOrUseRuntime(
+                                et,
+                                binbuf,
+                                encoding),
+                            et)
+                        ),
+
+                    Expression.Assign(inst, array)
+                    )
+                )
+            );
     }
 
     internal static Expression DeserializeEnumProperty(
@@ -180,58 +229,6 @@ internal class GenerateDeserializeLambda
                         )
                     )
                 );
-    }
-
-    internal static Expression DeserializeArrayProperty(
-        Type propType,
-        PropertyInfo pi,
-        ParameterExpression enumInstanse,
-        Expression binbuf,
-        Expression inst,
-        Expression encoding)
-    {
-        var array = Expression.Variable(propType);
-
-        var et = propType.GetElementType()!;
-
-        return Expression.Block(new[] { enumInstanse },
-
-            Expression.Assign(
-                enumInstanse,
-                Helper.CallReadFlagsMethod(binbuf)),
-
-            Helper.IfHashFlag(
-                enumInstanse,
-                Expression.Constant(
-                    PropertyFlags.NotNullValue),
-
-                Expression.Block(new[] { array },
-                    Expression.Assign(
-                        array,
-                        Expression.NewArrayBounds(
-                            et,
-                            Helper.CallReadMethod(
-                                binbuf,
-                                nameof(BinaryBufferBaseTypes.ReadInt32)
-                                )
-                            )
-                        ),
-
-                    Helper.ForeachSetArray(
-                        array,
-                        Expression.Convert(
-                            GetLambdaOrUseRuntime(
-                                et,
-                                binbuf,
-                                encoding),
-                            et)
-                        ),
-
-                    Expression.Assign(
-                        Expression.PropertyOrField(inst, pi.Name), array)
-                    )
-                )
-            );
     }
 
     internal static Expression DeserializeObjectProperty(

@@ -19,10 +19,7 @@ public static class BinaryBufferArrays
     public static bool WriteArray(this BinaryBuffer buffer, params byte[] array)
     {
         buffer.Write(array.Length);
-        foreach (var item in array)
-        {
-            buffer.Write(item);
-        }
+        buffer.WriteSpan(array);
         return true;
     }
 
@@ -194,11 +191,7 @@ public static class BinaryBufferArrays
     {
         var length = buffer.ReadInt32();
         var array = new byte[length];
-        for (int i = 0; i < length; i++)
-        {
-            array[i] = buffer.ReadByte();
-        }
-
+        buffer.ReadToSpan(array);
         return array;
     }
 

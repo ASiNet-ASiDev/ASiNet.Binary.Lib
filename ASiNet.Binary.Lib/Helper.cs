@@ -150,6 +150,25 @@ public static class Helper
                 isNotNullWriteMethod),
             CallWriteFlagsMethod(Expression.Constant(isNullFlag), binbuf));
 
+    public static Expression WriteArray(
+        Expression inst,
+        Expression binbuf,
+        Expression isNotNullWriteMethod,
+        PropertyFlags isNotNullFlag = PropertyFlags.NotNullValue,
+        PropertyFlags isNullFlag = PropertyFlags.None) =>
+        Expression.IfThenElse(
+            Expression.NotEqual(inst, Expression.Constant(null)),
+            Expression.Block(
+                CallWriteFlagsMethod(Expression.Constant(isNotNullFlag), binbuf),
+                Expression.Call(
+                    typeof(BinaryBufferBaseTypes),
+                    nameof(BinaryBufferBaseTypes.Write),
+                    null,
+                    binbuf,
+                    GetArrayLength(inst)),
+                isNotNullWriteMethod),
+            CallWriteFlagsMethod(Expression.Constant(isNullFlag), binbuf));
+
     public static Expression WriteObject(
         Expression inst,
         string propName,

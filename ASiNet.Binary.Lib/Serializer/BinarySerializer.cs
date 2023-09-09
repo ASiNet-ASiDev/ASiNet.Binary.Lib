@@ -1,5 +1,6 @@
 ﻿using System.Text;
 using ASiNet.Binary.Lib.Exceptions;
+using ASiNet.Binary.Lib.Expressions.Arrays;
 using ASiNet.Binary.Lib.Expressions.BaseTypes;
 
 namespace ASiNet.Binary.Lib.Serializer;
@@ -249,6 +250,65 @@ public static class BinarySerializer
             (BinaryBuffer buffer, Encoding encoding) => buffer.ReadGuid(),
             (object obj, BinaryBuffer buffer, Encoding encoding, ushort deep) => buffer.Write((Guid)obj));
 
+        // ARRAYS
+        yield return (typeof(sbyte[]).FullName!,
+            (BinaryBuffer buffer, Encoding encoding) => buffer.ReadSByteArray(),
+            (object obj, BinaryBuffer buffer, Encoding encoding, ushort deep) => buffer.WriteArray((sbyte[])obj));
 
+        yield return (typeof(byte[]).FullName!,
+            (BinaryBuffer buffer, Encoding encoding) => buffer.ReadByteArray(),
+            (object obj, BinaryBuffer buffer, Encoding encoding, ushort deep) => buffer.WriteArray((byte[])obj));
+
+        yield return (typeof(float[]).FullName!,
+            (BinaryBuffer buffer, Encoding encoding) => buffer.ReadSingleArray(),
+            (object obj, BinaryBuffer buffer, Encoding encoding, ushort deep) => buffer.WriteArray((float[])obj));
+
+        yield return (typeof(double[]).FullName!,
+            (BinaryBuffer buffer, Encoding encoding) => buffer.ReadDoubleArray(),
+            (object obj, BinaryBuffer buffer, Encoding encoding, ushort deep) => buffer.WriteArray((double[])obj));
+
+        yield return (typeof(bool[]).FullName!,
+            (BinaryBuffer buffer, Encoding encoding) => buffer.ReadBooleanArray(),
+            (object obj, BinaryBuffer buffer, Encoding encoding, ushort deep) => buffer.WriteArray((bool[])obj));
+
+        yield return (typeof(short[]).FullName!,
+            (BinaryBuffer buffer, Encoding encoding) => buffer.ReadInt16Array(),
+            (object obj, BinaryBuffer buffer, Encoding encoding, ushort deep) => buffer.WriteArray((short[])obj));
+
+        yield return (typeof(ushort[]).FullName!,
+            (BinaryBuffer buffer, Encoding encoding) => buffer.ReadUInt16Array(),
+            (object obj, BinaryBuffer buffer, Encoding encoding, ushort deep) => buffer.WriteArray((ushort[])obj));
+
+        yield return (typeof(int[]).FullName!,
+            (BinaryBuffer buffer, Encoding encoding) => buffer.ReadInt32Array(),
+            (object obj, BinaryBuffer buffer, Encoding encoding, ushort deep) => buffer.WriteArray((int[])obj));
+
+        yield return (typeof(uint[]).FullName!,
+            (BinaryBuffer buffer, Encoding encoding) => buffer.ReadUInt32Array(),
+            (object obj, BinaryBuffer buffer, Encoding encoding, ushort deep) => buffer.WriteArray((uint[])obj));
+
+        yield return (typeof(long[]).FullName!,
+            (BinaryBuffer buffer, Encoding encoding) => buffer.ReadInt64Array(),
+            (object obj, BinaryBuffer buffer, Encoding encoding, ushort deep) => buffer.WriteArray((long[])obj));
+
+        yield return (typeof(ulong[]).FullName!,
+            (BinaryBuffer buffer, Encoding encoding) => buffer.ReadUInt64Array(),
+            (object obj, BinaryBuffer buffer, Encoding encoding, ushort deep) => buffer.WriteArray((ulong[])obj));
+
+        yield return (typeof(char[]).FullName!,
+            (BinaryBuffer buffer, Encoding encoding) => buffer.ReadCharArray(),
+            (object obj, BinaryBuffer buffer, Encoding encoding, ushort deep) => buffer.WriteArray((char[])obj));
+
+        yield return (typeof(string[]).FullName!,
+            (BinaryBuffer buffer, Encoding encoding) => buffer.ReadStringArray(encoding),
+            (object obj, BinaryBuffer buffer, Encoding encoding, ushort deep) => buffer.WriteArray(encoding, (string[])obj));
+
+        yield return (typeof(DateTime[]).FullName!,
+            (BinaryBuffer buffer, Encoding encoding) => buffer.ReadDateTimeArray(),
+            (object obj, BinaryBuffer buffer, Encoding encoding, ushort deep) => buffer.WriteArray((DateTime[])obj));
+
+        yield return (typeof(Guid[]).FullName!,
+            (BinaryBuffer buffer, Encoding encoding) => buffer.ReadGuidArray(),
+            (object obj, BinaryBuffer buffer, Encoding encoding, ushort deep) => buffer.WriteArray((Guid[])obj));
     }
 }

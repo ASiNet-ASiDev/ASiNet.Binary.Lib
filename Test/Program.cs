@@ -7,16 +7,7 @@ using ProtoBuf;
 using ProtoBuf.Serializers;
 using System.Text.Json;
 
-Span<byte> buf = stackalloc byte[short.MaxValue];
-
-var t = new T() { Value = 2222 };
-
-
-var s = BinarySerializer.Serialize(t, buf);
-
-
-var ds = BinarySerializer.Deserialize<T>(buf);
-//BenchmarkRunner.Run<BinaryBufferSerializerTest>();
+BenchmarkRunner.Run<BinaryBufferSerializerTest>();
 
 Console.ReadLine();
 

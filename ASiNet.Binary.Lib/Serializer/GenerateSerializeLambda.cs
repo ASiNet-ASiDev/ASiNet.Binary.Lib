@@ -39,6 +39,8 @@ internal static class GenerateSerializeLambda
 
             if (type.IsEnum)
                 body.Add(SerializeEnum(type, binbufVar, instVar));
+            else if(type.IsArray)
+                body.Add(SerializeArray(type, binbufVar, instVar, encodingVar, deep));
             else
                 body.AddRange(SerializeObject(type, binbufVar, instVar, encodingVar, deep));
 
@@ -77,8 +79,6 @@ internal static class GenerateSerializeLambda
                 result.Add(SerializePrimitivesProperty(property, binbuf, inst, encoding, deep));
             else if (pt.IsEnum)
                 result.Add(SerializeEnumProperty(property, binbuf, inst, encoding, deep));
-            else if (pt.IsArray)
-                result.Add(SerializeArray(property, binbuf, inst, encoding, deep));
             else if (pt.IsValueType)
                 result.Add(SerializeValueType(property, binbuf, inst, encoding, deep));
             else
@@ -113,6 +113,27 @@ internal static class GenerateSerializeLambda
                     Expression.Convert(inst, et),
                     binbuf));
         }
+    }
+
+
+    internal static Expression SerializeArray(
+        Type type,
+        Expression binbuf,
+        Expression inst, 
+        Expression encoding,
+        Expression deep)
+    {
+        return Helper.WriteArray(
+            inst,
+            binbuf,
+            Helper.ForeachGetArray(
+                inst,
+                item => GetLambdaOrUseRuntimeArrays(
+                    item,
+                    type.GetElementType()!,
+                    binbuf,
+                    encoding,
+                    deep)));
     }
 
     internal static Expression SerializeEnumProperty(
@@ -192,29 +213,6 @@ internal static class GenerateSerializeLambda
                         encoding,
                         deep));
         }
-    }
-
-    internal static Expression SerializeArray(
-        PropertyInfo pi,
-        Expression binbuf,
-        Expression inst,
-        Expression encoding,
-        Expression deep)
-    {
-        return Helper.WriteArray(
-            inst,
-            pi.Name,
-            binbuf,
-            Helper.ForeachGetArray(
-                Expression.PropertyOrField(inst, pi.Name),
-                item => GetLambdaOrUseRuntimeArrays(
-                    item,
-                    pi.PropertyType.GetElementType()!,
-                    pi,
-                    binbuf,
-                    inst,
-                    encoding,
-                    deep)));
     }
 
     internal static Expression SerializeValueType(
@@ -307,9 +305,7 @@ internal static class GenerateSerializeLambda
     private static Expression GetLambdaOrUseRuntimeArrays(
         Expression item,
         Type propType,
-        PropertyInfo pi,
         Expression binbuf,
-        Expression inst,
         Expression encoding,
         Expression deep)
     {
