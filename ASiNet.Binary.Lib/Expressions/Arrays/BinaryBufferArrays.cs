@@ -1,4 +1,5 @@
 ﻿using System.Text;
+using ASiNet.Binary.Lib.Expressions.Arrays.Base.Unsafe;
 using ASiNet.Binary.Lib.Expressions.BaseTypes;
 
 namespace ASiNet.Binary.Lib.Expressions.Arrays;
@@ -9,10 +10,12 @@ public static class BinaryBufferArrays
     public static bool WriteArray(this BinaryBuffer buffer, params bool[] array)
     {
         buffer.Write(array.Length);
-        foreach (var item in array)
-        {
-            buffer.Write(item);
-        }
+        
+        var dist = new byte[array.Length];
+        Buffer.BlockCopy(array, 0, dist, 0, dist.Length);
+
+        buffer.WriteSpan(dist);
+
         return true;
     }
 
@@ -26,100 +29,121 @@ public static class BinaryBufferArrays
     public static bool WriteArray(this BinaryBuffer buffer, params sbyte[] array)
     {
         buffer.Write(array.Length);
-        foreach (var item in array)
-        {
-            buffer.Write(item);
-        }
+
+        var dist = new byte[array.Length];
+        Buffer.BlockCopy(array, 0, dist, 0, dist.Length);
+
+        buffer.WriteSpan(dist);
+
         return true;
     }
 
     public static bool WriteArray(this BinaryBuffer buffer, params short[] array)
     {
         buffer.Write(array.Length);
-        foreach (var item in array)
-        {
-            buffer.Write(item);
-        }
+
+        var dist = new byte[array.Length * sizeof(short)];
+        Buffer.BlockCopy(array, 0, dist, 0, dist.Length);
+
+        buffer.WriteSpan(dist);
+
         return true;
     }
 
     public static bool WriteArray(this BinaryBuffer buffer, params ushort[] array)
     {
         buffer.Write(array.Length);
-        foreach (var item in array)
-        {
-            buffer.Write(item);
-        }
+
+        var dist = new byte[array.Length * sizeof(ushort)];
+        Buffer.BlockCopy(array, 0, dist, 0, dist.Length);
+
+        buffer.WriteSpan(dist);
+
         return true;
     }
 
     public static bool WriteArray(this BinaryBuffer buffer, params int[] array)
     {
         buffer.Write(array.Length);
-        foreach (var item in array)
-        {
-            buffer.Write(item);
-        }
+
+        var dist = new byte[array.Length * sizeof(int)];
+        Buffer.BlockCopy(array, 0, dist, 0, dist.Length);
+
+        buffer.WriteSpan(dist);
+
         return true;
     }
 
     public static bool WriteArray(this BinaryBuffer buffer, params uint[] array)
     {
         buffer.Write(array.Length);
-        foreach (var item in array)
-        {
-            buffer.Write(item);
-        }
+
+        var dist = new byte[array.Length * sizeof(uint)];
+        Buffer.BlockCopy(array, 0, dist, 0, dist.Length);
+
+        buffer.WriteSpan(dist);
+
         return true;
     }
 
     public static bool WriteArray(this BinaryBuffer buffer, params long[] array)
     {
         buffer.Write(array.Length);
-        foreach (var item in array)
-        {
-            buffer.Write(item);
-        }
+
+        var dist = new byte[array.Length * sizeof(long)];
+        Buffer.BlockCopy(array, 0, dist, 0, dist.Length);
+
+        buffer.WriteSpan(dist);
+
+
         return true;
     }
 
     public static bool WriteArray(this BinaryBuffer buffer, params ulong[] array)
     {
         buffer.Write(array.Length);
-        foreach (var item in array)
-        {
-            buffer.Write(item);
-        }
+
+        var dist = new byte[array.Length * sizeof(ulong)];
+        Buffer.BlockCopy(array, 0, dist, 0, dist.Length);
+
+        buffer.WriteSpan(dist);
+
         return true;
     }
 
     public static bool WriteArray(this BinaryBuffer buffer, params float[] array)
     {
         buffer.Write(array.Length);
-        foreach (var item in array)
-        {
-            buffer.Write(item);
-        }
+
+        var dist = new byte[array.Length * sizeof(float)];
+        Buffer.BlockCopy(array, 0, dist, 0, dist.Length);
+
+        buffer.WriteSpan(dist);
+
         return true;
     }
 
     public static bool WriteArray(this BinaryBuffer buffer, params double[] array)
     {
         buffer.Write(array.Length);
-        foreach (var item in array)
-        {
-            buffer.Write(item);
-        }
+
+        var dist = new byte[array.Length * sizeof(double)];
+        Buffer.BlockCopy(array, 0, dist, 0, dist.Length);
+
+        buffer.WriteSpan(dist);
+
         return true;
     }
 
     public static bool WriteArray(this BinaryBuffer buffer, params char[] array)
     {
         buffer.Write(array.Length);
-        foreach (var item in array)
-        {
-            buffer.Write(item);
-        }
+
+        var dist = new byte[array.Length * sizeof(char)];
+        Buffer.BlockCopy(array, 0, dist, 0, dist.Length);
+
+        buffer.WriteSpan(dist);
+
         return true;
     }
 
@@ -178,13 +202,11 @@ public static class BinaryBufferArrays
     public static bool[] ReadBooleanArray(this BinaryBuffer buffer)
     {
         var length = buffer.ReadInt32();
-        var array = new bool[length];
-        for (int i = 0; i < length; i++)
-        {
-            array[i] = buffer.ReadBoolean();
-        }
 
-        return array;
+        var src = new byte[length];
+        buffer.ReadToSpan(src);
+
+        return src.AsBooleanArray();
     }
 
     public static byte[] ReadByteArray(this BinaryBuffer buffer)
@@ -198,121 +220,91 @@ public static class BinaryBufferArrays
     public static sbyte[] ReadSByteArray(this BinaryBuffer buffer)
     {
         var length = buffer.ReadInt32();
-        var array = new sbyte[length];
-        for (int i = 0; i < length; i++)
-        {
-            array[i] = buffer.ReadSByte();
-        }
+        var src = new byte[length];
+        buffer.ReadToSpan(src);
 
-        return array;
+        return src.AsSByteArray();
     }
 
     public static short[] ReadInt16Array(this BinaryBuffer buffer)
     {
         var length = buffer.ReadInt32();
-        var array = new short[length];
-        for (int i = 0; i < length; i++)
-        {
-            array[i] = buffer.ReadInt16();
-        }
+        var src = new byte[length * sizeof(short)];
+        buffer.ReadToSpan(src);
 
-        return array;
+        return src.AsInt16Array();
     }
 
     public static ushort[] ReadUInt16Array(this BinaryBuffer buffer)
     {
         var length = buffer.ReadInt32();
-        var array = new ushort[length];
-        for (int i = 0; i < length; i++)
-        {
-            array[i] = buffer.ReadUInt16();
-        }
+        var src = new byte[length * sizeof(ushort)];
+        buffer.ReadToSpan(src);
 
-        return array;
+        return src.AsUInt16Array();
     }
 
     public static int[] ReadInt32Array(this BinaryBuffer buffer)
     {
         var length = buffer.ReadInt32();
-        var array = new int[length];
-        for (int i = 0; i < length; i++)
-        {
-            array[i] = buffer.ReadInt32();
-        }
+        var src = new byte[length * sizeof(int)];
+        buffer.ReadToSpan(src);
 
-        return array;
+        return src.AsInt32Array();
     }
 
     public static uint[] ReadUInt32Array(this BinaryBuffer buffer)
     {
         var length = buffer.ReadInt32();
-        var array = new uint[length];
-        for (int i = 0; i < length; i++)
-        {
-            array[i] = buffer.ReadUInt32();
-        }
+        var src = new byte[length * sizeof(uint)];
+        buffer.ReadToSpan(src);
 
-        return array;
+        return src.AsUInt32Array();
     }
 
     public static long[] ReadInt64Array(this BinaryBuffer buffer)
     {
         var length = buffer.ReadInt32();
-        var array = new long[length];
-        for (int i = 0; i < length; i++)
-        {
-            array[i] = buffer.ReadInt64();
-        }
+        var src = new byte[length * sizeof(long)];
+        buffer.ReadToSpan(src);
 
-        return array;
+        return src.AsInt64Array();
     }
 
     public static ulong[] ReadUInt64Array(this BinaryBuffer buffer)
     {
         var length = buffer.ReadInt32();
-        var array = new ulong[length];
-        for (int i = 0; i < length; i++)
-        {
-            array[i] = buffer.ReadUInt64();
-        }
+        var src = new byte[length * sizeof(ulong)];
+        buffer.ReadToSpan(src);
 
-        return array;
+        return src.AsUInt64Array();
     }
 
     public static float[] ReadSingleArray(this BinaryBuffer buffer)
     {
         var length = buffer.ReadInt32();
-        var array = new float[length];
-        for (int i = 0; i < length; i++)
-        {
-            array[i] = buffer.ReadSingle();
-        }
+        var bytes = new byte[length * sizeof(float)];
+        buffer.ReadToSpan(bytes);
 
-        return array;
+        return bytes.AsSingleArray();
     }
 
     public static double[] ReadDoubleArray(this BinaryBuffer buffer)
     {
         var length = buffer.ReadInt32();
-        var array = new double[length];
-        for (int i = 0; i < length; i++)
-        {
-            array[i] = buffer.ReadDouble();
-        }
+        var bytes = new byte[length * sizeof(double)];
+        buffer.ReadToSpan(bytes);
 
-        return array;
+        return bytes.AsDoubleArray();
     }
 
     public static char[] ReadCharArray(this BinaryBuffer buffer)
     {
         var length = buffer.ReadInt32();
-        var array = new char[length];
-        for (int i = 0; i < length; i++)
-        {
-            array[i] = buffer.ReadChar();
-        }
+        var src = new byte[length * sizeof(char)];
+        buffer.ReadToSpan(src);
 
-        return array;
+        return src.AsCharArray();
     }
 
     public static T[] ReadEnumArray<T>(this BinaryBuffer buffer) where T : struct, Enum

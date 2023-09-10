@@ -79,6 +79,8 @@ public class GlobalSerializedTestObj
 
     public Arrays Arr { get; set; } = new();
 
+    public Arrays[] Arr_Arrays { get; set; } = new Arrays[] { new(), new(), new() };
+
     public User[] Users { get; set; } = new User[]
     {
         new User() { FirstName = "Джин", Id = 99, LastName = "5333", RefU = new() { FirstName = "geegee", Id = 522, LastName = "2r2222", RefU = new() { FirstName = "f33", Id = 993, } } },
@@ -142,31 +144,36 @@ public class Arrays
 
     public int Zero { get; set; } = 89395;
 
-    public int[] C_Array { get; set; } = { 1, 2, 3, 4, 5 };
+    public int[] C_Array { get; set; } = { 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5 };
 
-    public short[] D_Array { get; set; } = { 1, 2, 3, 4, 5 };
+    public short[] D_Array { get; set; } = { 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5 };
 
-    public uint[] C1_Array { get; set; } = { 1, 2, 3, 4, 5 };
+    public uint[] C1_Array { get; set; } = { 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5 };
 
-    public ushort[] D1_Array { get; set; } = { 1, 2, 3, 4, 5 };
+    public ushort[] D1_Array { get; set; } = { 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5 };
 
-    public byte[] C2_Array { get; set; } = { 1, 2, 3, 4, 5 };
+    public byte[] C2_Array { get; set; } = { 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5 };
 
-    public sbyte[] D2_Array { get; set; } = { 1, 2, 3, 4, 5 };
+    public sbyte[] D2_Array { get; set; } = { 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5 };
 
-    public long[] C3_Array { get; set; } = { 1, 2, 3, 4, 5 };
+    public long[] C3_Array { get; set; } = { 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5 };
 
-    public ulong[] D3_Array { get; set; } = { 1, 2, 3, 4, 5 };
+    public ulong[] D3_Array { get; set; } = { 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5 };
 
-    public float[] F1_Array { get; set; } = { 1.1f, 2.1f, 3.1f, 4.1f, 5.1f };
+    public float[] F1_Array { get; set; } = { 1.1f, 2.1f, 3.1f, 4.1f, 5.1f, 1.1f, 2.1f, 3.1f, 4.1f, 5.1f, 1.1f, 2.1f, 3.1f, 4.1f, 5.1f, 1.1f, 2.1f, 3.1f, 4.1f, 5.1f, 1.1f, 2.1f, 3.1f, 4.1f, 5.1f };
 
-    public double[] F2_Array { get; set; } = { 1.1d, 2.1d, 3.1d, 4.1d, 5.1d };
+    public double[] F2_Array { get; set; } = { 1.1f, 2.1f, 3.1f, 4.1f, 5.1f, 1.1f, 2.1f, 3.1f, 4.1f, 5.1f, 1.1f, 2.1f, 3.1f, 4.1f, 5.1f, 1.1f, 2.1f, 3.1f, 4.1f, 5.1f, 1.1f, 2.1f, 3.1f, 4.1f, 5.1f };
 
-    public string[] Str_Array { get; set; } = { "Hello World 1", "Hello World 2", "Hello World 3", "Hello World 4", "Hello World 5", };
+    public string[] Str_Array { get; set; } = 
+        { "Hello World 1", "Hello World 2", "Hello World 3", "Hello World 4", "Hello World 5",
+        "Hello World 1", "Hello World 2", "Hello World 3", "Hello World 4", "Hello World 5",
+        "Hello World 1", "Hello World 2", "Hello World 3", "Hello World 4", "Hello World 5",
+        "Hello World 1", "Hello World 2", "Hello World 3", "Hello World 4", "Hello World 5",
+        "Hello World 1", "Hello World 2", "Hello World 3", "Hello World 4", "Hello World 5",};
 
-    public char[] Ch_Array { get; set; } = { 'A', 'B', 'C', 'D', 'E' };
+    public char[] Ch_Array { get; set; } = { 'A', 'B', 'C', 'D', 'E', 'A', 'B', 'C', 'D', 'E', 'A', 'B', 'C', 'D', 'E', 'A', 'B', 'C', 'D', 'E', 'A', 'B', 'C', 'D', 'E', 'A', 'B', 'C', 'D', 'E' };
 
-    public DateTime[] Dt_Array { get; set; } = { DateTime.MinValue, DateTime.MinValue, DateTime.MinValue, DateTime.MinValue, DateTime.MinValue };
+    public DateTime[] Dt_Array { get; set; } = { DateTime.MaxValue, DateTime.MinValue, DateTime.MaxValue, DateTime.MinValue, DateTime.MinValue };
 
     public Guid[] G_Array { get; set; } = { Guid.Empty, Guid.Empty, Guid.Empty, Guid.Empty, Guid.Empty };
 

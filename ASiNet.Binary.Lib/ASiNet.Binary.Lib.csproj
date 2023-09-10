@@ -6,12 +6,13 @@
     <Nullable>enable</Nullable>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <Title>$(AssemblyName)</Title>
-    <Version>2.0.1</Version>
+    <Version>2.0.2</Version>
     <Authors>ASiDev</Authors>
     <Description>BinarySerializer, Supports basic types, arrays, generic types, as well as recursive types!</Description>
     <Copyright>MIT</Copyright>
     <PackageProjectUrl>https://github.com/ASiNet-ASiDev/ASiNet.Binary.Lib</PackageProjectUrl>
     <PackageTags>span, binary</PackageTags>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
 </Project>
