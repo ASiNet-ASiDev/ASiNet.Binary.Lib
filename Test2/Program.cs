@@ -9,9 +9,11 @@ var rp = 0;
 var wp = 0;
 var bb = new BinaryBuffer(area, buff, ref rp, ref wp);
 
-bb.WriteArray(new short[] { 10, 20, 30, 40, 50, 60, 70, 80 });
+var dt = Guid.NewGuid();
 
-var newArr = bb.ReadInt16Array();
+bb.WriteArray(new Guid[] { dt });
+
+var newArr = bb.ReadGuidArray();
 
 /*
 //Span<byte> buffer = stackalloc byte[200];

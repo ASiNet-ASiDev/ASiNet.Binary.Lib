@@ -170,20 +170,20 @@ public static class BinaryBufferArrays
     public static bool WriteArray(this BinaryBuffer buffer, params DateTime[] array)
     {
         buffer.Write(array.Length);
-        foreach (var item in array)
-        {
-            buffer.Write(item);
-        }
+        var dist = new DateTime[array.Length];
+        array.CopyTo(dist, 0);
+
+        buffer.WriteSpan(dist.AsByteArray());
         return true;
     }
 
     public static bool WriteArray(this BinaryBuffer buffer, params Guid[] array)
     {
         buffer.Write(array.Length);
-        foreach (var item in array)
-        {
-            buffer.Write(item);
-        }
+        var dist = new Guid[array.Length];
+        array.CopyTo(dist, 0);
+
+        buffer.WriteSpan(dist.AsByteArray());
         return true;
     }
 
@@ -322,25 +322,19 @@ public static class BinaryBufferArrays
     public static Guid[] ReadGuidArray(this BinaryBuffer buffer)
     {
         var length = buffer.ReadInt32();
-        var array = new Guid[length];
-        for (int i = 0; i < length; i++)
-        {
-            array[i] = buffer.ReadGuid();
-        }
+        var src = new byte[length * sizeof(decimal)];
+        buffer.ReadToSpan(src);
 
-        return array;
+        return src.AsGuidArray();
     }
 
     public static DateTime[] ReadDateTimeArray(this BinaryBuffer buffer)
     {
         var length = buffer.ReadInt32();
-        var array = new DateTime[length];
-        for (int i = 0; i < length; i++)
-        {
-            array[i] = buffer.ReadDateTime();
-        }
+        var src = new byte[length * sizeof(long)];
+        buffer.ReadToSpan(src);
 
-        return array;
+        return src.AsDateTimeArray();
     }
 
     public static string[] ReadStringArray(this BinaryBuffer buffer, Encoding encoding)

@@ -2,6 +2,7 @@
 using ASiNet.Binary.Lib.Serializer;
 using ASiNet.Binary.Lib.Serializer.Attributes;
 using BenchmarkDotNet.Attributes;
+using BenchmarkDotNet.Configs;
 using BenchmarkDotNet.Running;
 using ProtoBuf;
 using ProtoBuf.Serializers;
@@ -11,36 +12,60 @@ BenchmarkRunner.Run<BinaryBufferSerializerTest>();
 
 Console.ReadLine();
 
-class T
+static class Data
 {
-    [IgnoreProperty] 
-    public int Value { get; set; }
-    public int A {  get; set; }
-    public T? TT { get; set; }
-}
-
-[MemoryDiagnoser]
-public class BinaryBufferSerializerTest
-{
-    private GlobalSerializedTestObj _obj = new();
-
-    [Benchmark]
-    public void BinaryBufferSerializer_SerializerTest()
+    static Data()
     {
-        Span<byte> bb = stackalloc byte[ushort.MaxValue];
+        var buffer = new byte[ushort.MaxValue];
+        var size = BinarySerializer.Serialize(new GlobalSerializedTestObj(), buffer);
+        RawBSObject = buffer[..size];
 
+        RawJSObject = JsonSerializer.SerializeToUtf8Bytes(new GlobalSerializedTestObj());
 
-        var result = BinarySerializer.Serialize(_obj, bb);
-
-        _obj = BinarySerializer.Deserialize<GlobalSerializedTestObj>(bb)!;
+        BSResultBytes = new byte[ushort.MaxValue];
+        JSResultBytes = new byte[ushort.MaxValue];
     }
 
-    [Benchmark]
-    public void JsonSerializer_SerializerTest()
-    {
-        var result = JsonSerializer.SerializeToUtf8Bytes(_obj);
+    public static byte[] RawBSObject { get; private set; }
+    public static byte[] RawJSObject { get; private set; }
+    public static GlobalSerializedTestObj Object { get; private set; }
 
-        _obj = JsonSerializer.Deserialize<GlobalSerializedTestObj>(result)!;
+    public static GlobalSerializedTestObj JsResultObject { get; set; }
+
+    public static GlobalSerializedTestObj BsResultObject { get; set; }
+
+    public static byte[] BSResultBytes { get; set; }
+    public static byte[] JSResultBytes { get; set; }
+}
+
+[MemoryDiagnoser(false)]
+[GroupBenchmarksBy(BenchmarkLogicalGroupRule.ByCategory)]
+[CategoriesColumn]
+public class BinaryBufferSerializerTest
+{
+
+    [BenchmarkCategory("Serialize"), Benchmark()]
+    public void BinaryBuffer_Serialize()
+    {
+        var size = BinarySerializer.Serialize(Data.Object, Data.BSResultBytes);
+    }
+
+    [BenchmarkCategory("Deserialize"), Benchmark()]
+    public void BinaryBuffer_Deserialize()
+    {
+        Data.BsResultObject = BinarySerializer.Deserialize<GlobalSerializedTestObj>(Data.RawBSObject)!;
+    }
+
+    [BenchmarkCategory("Serialize"), Benchmark(Baseline = true)]
+    public void JsonSerializer_Serialize()
+    {
+        Data.JSResultBytes = JsonSerializer.SerializeToUtf8Bytes(Data.Object);
+    }
+
+    [BenchmarkCategory("Deserialize"), Benchmark(Baseline = true)]
+    public void JsonSerializer_Deserialize()
+    {
+        Data.JsResultObject = JsonSerializer.Deserialize<GlobalSerializedTestObj>(Data.RawJSObject)!;
     }
 }
 

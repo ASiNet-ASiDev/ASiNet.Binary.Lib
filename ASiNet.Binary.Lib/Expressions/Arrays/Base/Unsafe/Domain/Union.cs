@@ -80,3 +80,18 @@ internal struct CharUnion
     [FieldOffset(0)] public byte[] Bytes;
     [FieldOffset(0)] public char[] Objects;
 }
+
+[StructLayout(LayoutKind.Explicit)]
+internal struct DateTimeUnion
+{
+    [FieldOffset(0)] public byte[] Bytes;
+    [FieldOffset(0)] public DateTime[] Objects;
+}
+
+
+[StructLayout(LayoutKind.Explicit)]
+internal struct GuidUnion
+{
+    [FieldOffset(0)] public byte[] Bytes;
+    [FieldOffset(0)] public Guid[] Objects;
+}
